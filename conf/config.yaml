@@ -1,0 +1,5 @@
+App:
+  Host: "0.0.0.0"
+  Port: "8889"
+Mongo:
+  Uri: mongodb://localhost:27017
