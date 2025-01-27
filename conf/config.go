@@ -32,7 +32,8 @@ type configYaml struct {
 		GracefulTime time.Duration
 	}
 	Mongo struct {
-		Uri string
+		Uri    string
+		DbName string
 	}
 }
 

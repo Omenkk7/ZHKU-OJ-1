@@ -20,7 +20,7 @@ type Dao struct {
 func NewDao() *Dao {
 	mongoCfg := conf.Config.Mongo
 	return &Dao{
-		mongo: utils.NewMongoDB(mongoCfg.Uri, "zhku-oj-server"),
+		mongo: utils.NewMongoDB(mongoCfg.Uri, mongoCfg.DbName),
 	}
 }
 func (d *Dao) Close(ctx context.Context) {

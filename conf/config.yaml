@@ -3,3 +3,4 @@ App:
   Port: "8889"
 Mongo:
   Uri: mongodb://localhost:27017
+  DbName: zhku-oj
