@@ -139,11 +139,11 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
-func GenerateStringToken(id string, username string, role int) (string, error) {
+func GenerateStringToken(id string, username string, role time.Duration) (string, error) {
 	claims := Claims{
 		ID:       id,
 		Username: username,
-		Role:     role,
+		Role:     int(role),
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			Issuer:    "urmsone",

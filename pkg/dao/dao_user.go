@@ -9,7 +9,9 @@ package dao
 
 import (
 	"context"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 )
@@ -39,8 +41,28 @@ func (d *Dao) GetUserList(ctx context.Context, comQuery *utils.CommonQuery) (ite
 }
 
 func (d *Dao) GetOneUser(ctx context.Context, query interface{}) (user *models.User, err error) {
+	//打印日志
 	lg := utils.GetDefaultLogger()
-	lg.Println(query)
+	lg.Println("查询条件：", query)
+	//按query条件查询
 	err = d.mongo.FindOne(ctx, userTable, query, &user)
+	return user, err
+}
+
+func (d *Dao) DeleteUser(ctx context.Context, selector bson.M) (err error) {
+	//打印日志
+	lg := utils.GetDefaultLogger()
+	lg.Println("删除：", selector)
+	_, err = d.mongo.Remove(ctx, userTable, selector)
+	return err
+}
+
+func (d *Dao) UpdateUser(ctx context.Context, selector bson.M, update bson.D) (err error) {
+	//打印日志
+	lg := utils.GetDefaultLogger()
+	lg.Println("修改：", selector, update)
+	/*d.mongo.UpdateOne(ctx, userTable, selector, update)*/
+	collection := mongo.Collection{}
+	collection.UpdateOne(ctx, userTable, update)
 	return
 }

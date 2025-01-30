@@ -8,13 +8,13 @@
 package dto
 
 type ReqPostUser struct {
-	Name     string `json:"name"`
+	Username string `json:"username"`
 	Password string `json:"password"`
 	Email    string `json:"email"`
 	Phone    string `json:"phone"`
 }
 
 type ReqPostLoginUser struct {
-	Name     string `json:"name"`
+	Username string `json:"username"`
 	Password string `json:"password"`
 }

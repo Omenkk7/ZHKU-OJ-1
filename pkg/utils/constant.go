@@ -10,6 +10,17 @@ package utils
 import "time"
 
 const (
+
+	//账号状态
+	StatusBanned = 0
+	StatusNormal = 1
+	StatusUser   = 0
+	StatusAdmin  = 1
+
+	//响应result状态
+	StatusSuccess = "Success"
+	StatusFail    = "Fail"
+
 	OneDaySeconds  = 86400
 	OneHourSeconds = 3600
 	TenMinutes     = 600
@@ -38,7 +49,7 @@ const (
 	DefaultRole              = 1  //user
 	RoleAdmin                = 99 //user
 	Token                    = "X-Auth-Token"
-	JwtTokenSecretKey        = "secretKey"
+	JwtTokenSecretKey        = "zkoj10086"
 	JwtTokenHeaderKey        = "X-Auth-Token"
 	RememberEffectiveTime    = time.Hour * time.Duration(24*14)
 	NotRememberEffectiveTime = time.Hour * time.Duration(2)
