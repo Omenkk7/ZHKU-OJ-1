@@ -11,6 +11,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"github.com/golang-jwt/jwt"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"strconv"
 	"time"
@@ -133,17 +134,17 @@ var Encoder = Bcrypt{
 }
 
 type Claims struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Role     int    `json:"role"` // 0-> admin; 1-> member
+	ID       primitive.ObjectID `json:"_id"`
+	Username string             `json:"username"`
+	Role     int32              `json:"role"` // 0-> admin; 1-> member
 	jwt.StandardClaims
 }
 
-func GenerateStringToken(id string, username string, role time.Duration) (string, error) {
+func GenerateStringToken(id primitive.ObjectID, username string, role int32) (string, error) {
 	claims := Claims{
 		ID:       id,
 		Username: username,
-		Role:     int(role),
+		Role:     role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			Issuer:    "urmsone",

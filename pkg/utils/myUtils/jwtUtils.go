@@ -2,6 +2,7 @@ package myUtils
 
 import (
 	"errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 	"zhku-oj-server/pkg/models"
 
@@ -10,7 +11,9 @@ import (
 
 // JWTCustomClaims 自定义JWT负载结构
 type JWTCustomClaims struct {
-	User *models.User
+	ID       primitive.ObjectID `json:"_id"`
+	Username string             `json:"username"`
+	Role     int32              `json:"role"` // 0-> admin; 1-> member
 	jwt.StandardClaims
 }
 
@@ -21,7 +24,9 @@ func GenerateToken(user *models.User, secret string, expirationTime time.Duratio
 
 	// 创建自定义负载
 	claims := &JWTCustomClaims{
-		User: user,
+		ID:       user.ID,
+		Username: user.Username,
+		Role:     user.Role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expiration.Unix(),
 		},
