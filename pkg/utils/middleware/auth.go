@@ -26,8 +26,8 @@ func JWTInterceptor() gin.HandlerFunc {
 
 		// 检查token是否存在
 		if token == "" {
-			lg.Info(utils.JwtEmpty)
-			utils.BadRequest(c, utils.New(utils.JwtEmpty))
+			lg.Info(utils.JwtEmptyErr)
+			utils.BadRequest(c, utils.New(utils.JwtEmptyErr))
 			c.Abort()
 			return
 		}
@@ -35,8 +35,8 @@ func JWTInterceptor() gin.HandlerFunc {
 		//校验jwt是否有效
 		jwtClaims, err := utils.ParseToken(token, utils.JwtTokenSecretKey)
 		if err != nil {
-			lg.Info(utils.JwtFail, err)
-			utils.BadRequest(c, utils.New(utils.JwtFail))
+			lg.Info(utils.JwtFailErr, err)
+			utils.BadRequest(c, utils.New(utils.JwtFailErr))
 			c.Abort()
 			return
 		}
@@ -48,7 +48,7 @@ func JWTInterceptor() gin.HandlerFunc {
 		}
 		user, _ := dao.GetOneUser(context.Background(), query) //user已为最新状态
 		if user.Role == utils.StatusUser {
-			utils.BadRequest(c, utils.New(utils.NOPerrmission))
+			utils.BadRequest(c, utils.New(utils.NOPermissionErr))
 			c.Abort()
 			return
 		}

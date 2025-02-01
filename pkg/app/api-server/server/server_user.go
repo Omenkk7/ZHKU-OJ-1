@@ -12,26 +12,7 @@ import (
 	"zhku-oj-server/pkg/app/api-server/dto"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
-	"zhku-oj-server/pkg/utils/middleware"
 )
-
-// RegisterUser 路由器 ——————user_manager
-func (s *Server) RegisterUser(g *gin.RouterGroup) {
-	userGroup := g.Group("/user")
-	{
-		userGroup.POST("/", s.PostUser)   // 注册
-		userGroup.POST("/login", s.Login) // 登录
-	}
-
-	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
-	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
-	{
-		securedGroup.GET("/", s.GetSomeUser)      //查一堆
-		securedGroup.GET("/:id", s.GetOneUser)    //查一个
-		userGroup.PUT("/:id", s.PutUser)          //改一个
-		securedGroup.DELETE("/:id", s.DeleteUser) //删一个
-	}
-}
 
 // PostUser 注册 /user
 func (s *Server) PostUser(c *gin.Context) {
@@ -89,13 +70,13 @@ func (s *Server) GetSomeUser(c *gin.Context) {
 	query := c.Request.URL.Query()
 	cq := utils.BuildCommonQuery(utils.Query(query))
 	lg.Info("get", cq)
-	resp, err := s.svc.GetUserList(cq)
+	res, err := s.svc.GetUserList(cq)
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	utils.SuccessResponse(c, resp)
+	utils.SuccessResponse(c, res)
 }
 
 // PutUser 通过id改一个用户 /:id

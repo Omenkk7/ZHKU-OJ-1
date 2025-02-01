@@ -47,9 +47,28 @@ func (s *Server) Init() {
 	s.RegisterRoutes()
 }
 
+// RegisterUser 路由器 ——————user_manager
+func (s *Server) RegisterUser(g *gin.RouterGroup) {
+	userGroup := g.Group("/user")
+	{
+		userGroup.POST("/", s.PostUser)   // 注册
+		userGroup.POST("/login", s.Login) // 登录
+	}
+
+	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
+	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
+	{
+		securedGroup.GET("/", s.GetSomeUser)      //查一堆
+		securedGroup.GET("/:id", s.GetOneUser)    //查一个
+		userGroup.PUT("/:id", s.PutUser)          //改一个
+		securedGroup.DELETE("/:id", s.DeleteUser) //删一个
+	}
+}
+
 func (s *Server) RegisterRoutes() {
 	v1 := s.app.Group("/api/v1")
 	s.RegisterUser(v1) //调用middleware的路由组
+	s.RegisterLabel(v1)
 }
 
 func (s *Server) Run() error {

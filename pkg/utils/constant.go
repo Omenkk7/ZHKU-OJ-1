@@ -10,6 +10,13 @@ package utils
 import "time"
 
 const (
+	//成功
+	UpdateSuccess   = "更新成功"
+	DeleteSuccess   = "删除成功"
+	SelectSuccess   = "查询成功"
+	RegisterSuccess = "注册成功！"
+	LoginSuccess    = "登录成功"
+	CreateSuccess   = "创建成功！"
 
 	//账号状态
 	StatusBanned = 0
@@ -17,9 +24,9 @@ const (
 	StatusUser   = 0
 	StatusAdmin  = 1
 
-	//响应result状态
-	StatusSuccess = "Success"
-	StatusFail    = "Fail"
+	//题目状态
+	StatusPrivate = 0
+	StatusPublic  = 1
 
 	OneDaySeconds  = 86400
 	OneHourSeconds = 3600

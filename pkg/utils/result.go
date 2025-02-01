@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
@@ -25,15 +24,23 @@ func (r *Result) Fail(msg string) *Result {
 	return &Result{
 		Code: -1,
 		Msg:  msg,
+		Data: "null",
 	}
 }
 
 func (r *Result) Response(c *gin.Context, res *Result) {
 	if res.Code == 0 {
-		SuccessResponse(c, res)
+		c.JSON(http.StatusOK, gin.H{
+			"code": 0,
+			"msg":  res.Msg,
+			"data": res.Data,
+		})
 	} else {
-		//TODO 统一响应格式，返回状态码-1，data为空字符串？
-		BadRequest(c, errors.New(res.Msg))
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": -1,
+			"msg":  res.Msg,
+			"data": "null",
+		})
 	}
 }
 
