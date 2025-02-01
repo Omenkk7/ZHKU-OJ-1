@@ -1,4 +1,4 @@
-package success
+package utils
 
 const (
 	UpdateSuccess   = "更新成功"

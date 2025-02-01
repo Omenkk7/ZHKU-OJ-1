@@ -15,39 +15,35 @@ import (
 	"zhku-oj-server/pkg/app/api-server/dto"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
-	"zhku-oj-server/pkg/utils/errors"
-	"zhku-oj-server/pkg/utils/myUtils"
-	"zhku-oj-server/pkg/utils/success"
 )
 
 // UpdateUser 通过id更新数据
-func (s *Service) UpdateUser(user *models.User) (res *models.Result) {
+func (s *Service) UpdateUser(user *models.User) (res *utils.Result) {
 	lg := utils.GetDefaultLogger()
+	//selector是筛选条件，update是要更新的内容
 	selector := bson.M{
 		"_id": user.ID,
 	}
-	hashPassword, _ := myUtils.HashPassword(user.Password) //hash加密
-	update := bson.D{
-		{"$set", bson.D{
-			{"password", hashPassword},
-			{"email", user.Email},
-			{"phone", user.Phone},
-			{"username", user.Username},
-			{"nickname", user.Nickname},
-			{"mtime", time.Now().Unix()},
-		}},
+	//更改的密码需要加密
+	hashPassword, _ := utils.HashPassword(user.Password) //hash加密
+	user.Password = hashPassword
+	//动态构造bson
+	update, err := utils.GenerateUpdateBson(user)
+	if err != nil {
+		lg.Info(utils.ConstructingBsonException, err)
+		return res.Fail(utils.ConstructingBsonException)
 	}
 	lg.Infof("更新_id:%s\nselector:%s\n", user.ID, selector)
-	err := s.dao.UpdateUser(context.Background(), selector, update)
+	err = s.dao.UpdateUser(context.Background(), selector, update)
 	if err != nil {
-		lg.Info(errors.UpdateFailed, err)
-		return res.Fail(errors.UpdateFailed)
+		lg.Info(utils.UpdateFailed, err)
+		return res.Fail(utils.UpdateFailed)
 	}
-	return res.Success(success.UpdateSuccess, "")
+	return res.Success(utils.UpdateSuccess, "")
 }
 
 // DeleteUser 通过id删除用户
-func (s *Service) DeleteUser(id string) (res *models.Result) {
+func (s *Service) DeleteUser(id string) (res *utils.Result) {
 	lg := utils.GetDefaultLogger()
 	//1.删之前先查询是否有该条数据
 	objectId, err := primitive.ObjectIDFromHex(id)
@@ -59,43 +55,43 @@ func (s *Service) DeleteUser(id string) (res *models.Result) {
 	//2.调用Dao查询user
 	user, err := s.dao.GetOneUser(context.Background(), selector)
 	if err != nil {
-		lg.Info(errors.UserNotExist, err)
-		return res.Fail(errors.UserNotExist)
+		lg.Info(utils.UserNotExist, err)
+		return res.Fail(utils.UserNotExist)
 	}
 	//3.不能删管理员
 	if user.Role == utils.StatusAdmin {
-		return res.Fail(errors.CanotDeleteAdmin)
+		return res.Fail(utils.CanotDeleteAdmin)
 	}
 
 	//4.删除
 	lg.Infof("删除id%s", id)
 	err = s.dao.DeleteUser(context.Background(), selector)
 	if err != nil {
-		lg.Info(errors.DeleteFail, err)
-		return res.Fail(errors.DeleteFail)
+		lg.Info(utils.DeleteFail, err)
+		return res.Fail(utils.DeleteFail)
 	}
-	lg.Info(success.DeleteSuccess)
-	return res.Success(success.DeleteSuccess, "")
+	lg.Info(utils.DeleteSuccess)
+	return res.Success(utils.DeleteSuccess, "")
 }
 
 // GetOneUser 构造query条件查用户
-func (s *Service) GetOneUser(user *models.User) (res *models.Result) {
+func (s *Service) GetOneUser(user *models.User) (res *utils.Result) {
 	lg := utils.GetDefaultLogger()
 	//构造bson
 	query, err := bson.Marshal(user)
 	if err != nil {
-		lg.Info(errors.ConstructingBsonException, err)
-		return res.Fail(errors.ConstructingBsonException)
+		lg.Info(utils.ConstructingBsonException, err)
+		return res.Fail(utils.ConstructingBsonException)
 	}
 	lg.Infof("查询条件: %s", query)
 	//调用Dao查询user
 	user, err = s.dao.GetOneUser(context.Background(), query)
 	if err != nil || user == nil {
-		lg.Info(errors.UserNotExist, err)
-		return res.Fail(errors.UserNotExist)
+		lg.Info(utils.UserNotExist, err)
+		return res.Fail(utils.UserNotExist)
 	}
 	//响应
-	return res.Success(success.SelectSuccess, user)
+	return res.Success(utils.SelectSuccess, user)
 }
 
 // GetUserList 查一堆数据
@@ -106,12 +102,12 @@ func (s *Service) GetUserList(comQuery *utils.CommonQuery) (items *utils.RespPag
 
 // PostUser 注册
 // TODO 校验邮箱，电话，密码的格式
-func (s *Service) PostUser(postUser *dto.ReqPostUser) (res *models.Result) {
+func (s *Service) PostUser(postUser *dto.ReqPostUser) (res *utils.Result) {
 	lg := utils.GetDefaultLogger()
 	//1.判空
 	if postUser.Username == "" || postUser.Password == "" {
-		lg.Info(errors.CountOrPasswordCannotBeNull)
-		return res.Fail(errors.CountOrPasswordCannotBeNull)
+		lg.Info(utils.CountOrPasswordCannotBeNull)
+		return res.Fail(utils.CountOrPasswordCannotBeNull)
 	}
 	//2.检查用户名是否存在
 	query := bson.M{
@@ -120,10 +116,10 @@ func (s *Service) PostUser(postUser *dto.ReqPostUser) (res *models.Result) {
 	user, _ := s.dao.GetOneUser(context.Background(), query)
 	if user != nil {
 		lg.Infof("用户名%s已被注册", postUser.Username)
-		return res.Fail(errors.CountHasBeenRegistered)
+		return res.Fail(utils.CountHasBeenRegistered)
 	}
 	//3.未被注册，一切正常
-	hashPassword, _ := myUtils.HashPassword(postUser.Password) //hash加密
+	hashPassword, _ := utils.HashPassword(postUser.Password) //hash加密
 	user = &models.User{
 		Username: postUser.Username,
 		Password: hashPassword,
@@ -136,19 +132,19 @@ func (s *Service) PostUser(postUser *dto.ReqPostUser) (res *models.Result) {
 	}
 	_, err := s.dao.CreateUser(context.Background(), user)
 	if err != nil {
-		lg.Info(errors.ServerAbnormal, err)
-		return res.Fail(errors.ServerAbnormal)
+		lg.Info(utils.ServerAbnormal, err)
+		return res.Fail(utils.ServerAbnormal)
 	}
-	return res.Success(success.RegisterSuccess, "")
+	return res.Success(utils.RegisterSuccess, "")
 }
 
 // UserLogin 登录
-func (s *Service) UserLogin(loginUser *dto.ReqPostLoginUser) (res *models.Result) {
+func (s *Service) UserLogin(loginUser *dto.ReqPostLoginUser) (res *utils.Result) {
 	lg := utils.GetDefaultLogger()
 	//1.判空
 	if loginUser.Username == "" || loginUser.Password == "" {
-		lg.Info(errors.CountOrPasswordCannotBeNull)
-		return res.Fail(errors.CountOrPasswordCannotBeNull)
+		lg.Info(utils.CountOrPasswordCannotBeNull)
+		return res.Fail(utils.CountOrPasswordCannotBeNull)
 	}
 	//2.查询用户是否存在
 	query := bson.M{
@@ -157,24 +153,24 @@ func (s *Service) UserLogin(loginUser *dto.ReqPostLoginUser) (res *models.Result
 	user, err := s.dao.GetOneUser(context.Background(), query)
 	if err != nil {
 		lg.Info("查询用户异常: %v", err)
-		return res.Fail(errors.CountException)
+		return res.Fail(utils.CountException)
 	}
 	//3.判断密码是否正确
-	if !myUtils.CheckPasswordHash(loginUser.Password, user.Password) {
-		lg.Info(errors.PasswordException)
-		return res.Fail(errors.PasswordException)
+	if !utils.CheckPasswordHash(loginUser.Password, user.Password) {
+		lg.Info(utils.PasswordException)
+		return res.Fail(utils.PasswordException)
 	}
 	//4.判断账号是否被封禁
 	if user.Status == utils.StatusBanned {
-		lg.Info(errors.CountBaned)
-		return res.Fail(errors.CountBaned)
+		lg.Info(utils.CountBaned)
+		return res.Fail(utils.CountBaned)
 	}
-	//5.成功查询
-	jwt, err := myUtils.GenerateToken(user, utils.JwtTokenSecretKey, time.Hour*24) //jwt令牌
+	//5.登录成功，生成jwt
+	jwt, err := utils.GenerateStringToken(user) //jwt令牌
 	if err != nil {
-		lg.Info(errors.ConstructingJWTException, err)
-		return res.Fail(errors.ConstructingJWTException)
+		lg.Info(utils.ConstructingJWTException, err)
+		return res.Fail(utils.ConstructingJWTException)
 	}
 	lg.Info("jwt:", jwt)
-	return res.Success(success.LoginSuccess, jwt)
+	return res.Success(utils.LoginSuccess, jwt)
 }

@@ -15,26 +15,26 @@ import (
 	"zhku-oj-server/pkg/utils/middleware"
 )
 
-// 路由器
+// RegisterUser 路由器 ——————user_manager
 func (s *Server) RegisterUser(g *gin.RouterGroup) {
 	userGroup := g.Group("/user")
 	{
-		userGroup.POST("/", s.postUser)   // 注册
-		userGroup.POST("/login", s.login) // 登录
+		userGroup.POST("/", s.PostUser)   // 注册
+		userGroup.POST("/login", s.Login) // 登录
 	}
 
 	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
 	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
 	{
-		securedGroup.GET("/", s.getSomeUser)      //查一堆
-		securedGroup.GET("/:id", s.getOneUser)    //查一个
-		userGroup.PUT("/:id", s.putUser)          //改一个
-		securedGroup.DELETE("/:id", s.deleteUser) //删一个
+		securedGroup.GET("/", s.GetSomeUser)      //查一堆
+		securedGroup.GET("/:id", s.GetOneUser)    //查一个
+		userGroup.PUT("/:id", s.PutUser)          //改一个
+		securedGroup.DELETE("/:id", s.DeleteUser) //删一个
 	}
 }
 
-// 注册
-func (s *Server) postUser(c *gin.Context) {
+// PostUser 注册 /user
+func (s *Server) PostUser(c *gin.Context) {
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Info("注册......")
@@ -50,8 +50,8 @@ func (s *Server) postUser(c *gin.Context) {
 	return
 }
 
-// 登录
-func (s *Server) login(c *gin.Context) {
+// Login 登录 /login
+func (s *Server) Login(c *gin.Context) {
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Info("登录......")
@@ -67,8 +67,8 @@ func (s *Server) login(c *gin.Context) {
 	return
 }
 
-// 构造query条件查用户
-func (s *Server) getOneUser(c *gin.Context) {
+// GetOneUser 构造query条件查用户 /:id
+func (s *Server) GetOneUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	var user *models.User
 	if err := c.BindJSON(&user); err != nil {
@@ -82,8 +82,8 @@ func (s *Server) getOneUser(c *gin.Context) {
 	return
 }
 
-// 查一堆用户
-func (s *Server) getSomeUser(c *gin.Context) {
+// GetSomeUser 查一堆用户 /
+func (s *Server) GetSomeUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	lg.Info("查一堆用户......")
 	query := c.Request.URL.Query()
@@ -98,8 +98,8 @@ func (s *Server) getSomeUser(c *gin.Context) {
 	utils.SuccessResponse(c, resp)
 }
 
-// 通过id改一个用户
-func (s *Server) putUser(c *gin.Context) {
+// PutUser 通过id改一个用户 /:id
+func (s *Server) PutUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	lg.Info("通过id改一个用户......")
 
@@ -116,8 +116,8 @@ func (s *Server) putUser(c *gin.Context) {
 	return
 }
 
-// 通过id删一个用户
-func (s *Server) deleteUser(c *gin.Context) {
+// DeleteUser 通过id删一个用户 /:id
+func (s *Server) DeleteUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	lg.Info("删用户......")
 	id := c.Param("id")

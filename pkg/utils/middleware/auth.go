@@ -13,11 +13,9 @@ import (
 	"golang.org/x/net/context"
 	"zhku-oj-server/pkg/dao"
 	"zhku-oj-server/pkg/utils"
-	"zhku-oj-server/pkg/utils/errors"
-	"zhku-oj-server/pkg/utils/myUtils"
 )
 
-// 拦截器
+// JWTInterceptor 拦截器 通用
 func JWTInterceptor() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		lg := utils.GetDefaultLogger()
@@ -28,17 +26,17 @@ func JWTInterceptor() gin.HandlerFunc {
 
 		// 检查token是否存在
 		if token == "" {
-			lg.Info(errors.JwtEmpty)
-			utils.BadRequest(c, errors.New(errors.JwtEmpty))
+			lg.Info(utils.JwtEmpty)
+			utils.BadRequest(c, utils.New(utils.JwtEmpty))
 			c.Abort()
 			return
 		}
 
 		//校验jwt是否有效
-		jwtClaims, err := myUtils.ParseToken(token, utils.JwtTokenSecretKey)
+		jwtClaims, err := utils.ParseToken(token, utils.JwtTokenSecretKey)
 		if err != nil {
-			lg.Info(errors.JwtFail, err)
-			utils.BadRequest(c, errors.New(errors.JwtFail))
+			lg.Info(utils.JwtFail, err)
+			utils.BadRequest(c, utils.New(utils.JwtFail))
 			c.Abort()
 			return
 		}
@@ -50,7 +48,7 @@ func JWTInterceptor() gin.HandlerFunc {
 		}
 		user, _ := dao.GetOneUser(context.Background(), query) //user已为最新状态
 		if user.Role == utils.StatusUser {
-			utils.BadRequest(c, errors.New(errors.NOPerrmission))
+			utils.BadRequest(c, utils.New(utils.NOPerrmission))
 			c.Abort()
 			return
 		}

@@ -15,7 +15,6 @@ import (
 	"net/http"
 	"time"
 	"zhku-oj-server/pkg/app/api-server/service"
-	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 	"zhku-oj-server/pkg/utils/middleware"
 )
@@ -25,7 +24,7 @@ type Server struct {
 	app    *gin.Engine
 	svc    *service.Service
 	opts   *CmdOptions
-	res    *models.Result
+	res    *utils.Result
 	stopCh <-chan struct{}
 }
 
@@ -50,7 +49,7 @@ func (s *Server) Init() {
 
 func (s *Server) RegisterRoutes() {
 	v1 := s.app.Group("/api/v1")
-	s.RegisterUser(v1)
+	s.RegisterUser(v1) //调用middleware的路由组
 }
 
 func (s *Server) Run() error {
