@@ -6,4 +6,6 @@ const (
 	SelectSuccess   = "查询成功"
 	RegisterSuccess = "注册成功！"
 	LoginSuccess    = "登录成功"
+
+	CreateSuccess = "创建成功！"
 )

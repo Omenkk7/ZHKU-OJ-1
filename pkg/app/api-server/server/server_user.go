@@ -89,13 +89,13 @@ func (s *Server) GetSomeUser(c *gin.Context) {
 	query := c.Request.URL.Query()
 	cq := utils.BuildCommonQuery(utils.Query(query))
 	lg.Info("get", cq)
-	resp, err := s.svc.GetUserList(cq)
+	res, err := s.svc.GetUserList(cq)
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	utils.SuccessResponse(c, resp)
+	utils.SuccessResponse(c, res)
 }
 
 // PutUser 通过id改一个用户 /:id

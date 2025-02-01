@@ -21,6 +21,10 @@ const (
 	ConstructingJWTException = "生成令牌失败！"
 	JwtFail                  = "令牌无效！"
 	JwtEmpty                 = "令牌为空！"
+
+	ProblemOrAuthorCannotBeNull = "题目名称和出题人不能为空!"
+	ProblemIsExist              = "题目已存在！"
+	ProblemNotExist             = "题目不存在!"
 )
 
 func New(s string) error {

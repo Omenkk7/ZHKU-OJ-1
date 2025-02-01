@@ -33,7 +33,7 @@ func (s *Service) UpdateUser(user *models.User) (res *utils.Result) {
 		lg.Info(utils.ConstructingBsonException, err)
 		return res.Fail(utils.ConstructingBsonException)
 	}
-	lg.Infof("更新_id:%s\nselector:%s\n", user.ID, selector)
+	lg.Infof("更新_id:%s\nselector:%s\nbson:%s", user.ID, selector, update)
 	err = s.dao.UpdateUser(context.Background(), selector, update)
 	if err != nil {
 		lg.Info(utils.UpdateFailed, err)
@@ -46,20 +46,20 @@ func (s *Service) UpdateUser(user *models.User) (res *utils.Result) {
 func (s *Service) DeleteUser(id string) (res *utils.Result) {
 	lg := utils.GetDefaultLogger()
 	//1.删之前先查询是否有该条数据
-	objectId, err := primitive.ObjectIDFromHex(id)
+	objectId, _ := primitive.ObjectIDFromHex(id)
 	selector := bson.M{
 		"_id": objectId,
 	}
 	lg.Infof("查询_id: %s", objectId)
 
 	//2.调用Dao查询user
-	user, err := s.dao.GetOneUser(context.Background(), selector)
+	daoUser, err := s.dao.GetOneUser(context.Background(), selector)
 	if err != nil {
 		lg.Info(utils.UserNotExist, err)
 		return res.Fail(utils.UserNotExist)
 	}
 	//3.不能删管理员
-	if user.Role == utils.StatusAdmin {
+	if daoUser.Role == utils.StatusAdmin {
 		return res.Fail(utils.CanotDeleteAdmin)
 	}
 

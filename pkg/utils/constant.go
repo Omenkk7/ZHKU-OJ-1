@@ -17,6 +17,10 @@ const (
 	StatusUser   = 0
 	StatusAdmin  = 1
 
+	//题目状态
+	StatusPrivate = 0
+	StatusPublic  = 1
+
 	//响应result状态
 	StatusSuccess = "Success"
 	StatusFail    = "Fail"
