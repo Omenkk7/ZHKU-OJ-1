@@ -28,6 +28,59 @@ type Server struct {
 	stopCh <-chan struct{}
 }
 
+// RegisterUser 路由器 ——————user_manager
+func (s *Server) RegisterUser(g *gin.RouterGroup) {
+	userGroup := g.Group("/user")
+	{
+		userGroup.POST("/", s.PostUser)   // 注册
+		userGroup.POST("/login", s.Login) // 登录
+	}
+
+	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
+	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
+	{
+		securedGroup.GET("/", s.GetSomeUser)      //查一堆
+		securedGroup.GET("/:id", s.GetOneUser)    //查一个
+		userGroup.PUT("/:id", s.PutUser)          //改一个
+		securedGroup.DELETE("/:id", s.DeleteUser) //删一个
+	}
+}
+
+// RegisterLabel 路由器 ——————label_manager
+func (s *Server) RegisterLabel(g *gin.RouterGroup) {
+	//查询操作不拦截
+	userGroup := g.Group("/label")
+	{
+		userGroup.GET("/", s.GetSomeLabel)   //查一堆
+		userGroup.GET("/:id", s.GetOneLabel) //查一个
+	}
+	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
+	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
+	{
+		securedGroup.PUT("/:id", s.PutLabel)       //改一个
+		securedGroup.DELETE("/:id", s.DeleteLabel) //删一个
+		securedGroup.POST("/", s.PostLabel)        //增一个
+	}
+}
+
+// RegisterProblem 路由器 ——————label_problem
+func (s *Server) RegisterProblem(g *gin.RouterGroup) {
+	//查询操作不拦截
+	//TODO 只有管理员才可以查到私密题库  或扩展业务，充VIP得到付费资源
+	userGroup := g.Group("/problem")
+	{
+		userGroup.GET("/", s.GetSomeProblem)   //查一堆
+		userGroup.GET("/:id", s.GetOneProblem) //查一个
+	}
+	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
+	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
+	{
+		securedGroup.PUT("/:id", s.PutProblem)       //改一个
+		securedGroup.DELETE("/:id", s.DeleteProblem) //删一个
+		securedGroup.POST("/", s.PostProblem)        //增一个
+	}
+}
+
 func NewServer(lg logrus.FieldLogger, svc *service.Service, opts *CmdOptions, stopCh <-chan struct{}) *Server {
 	app := gin.Default()
 	app.Use(middleware.CorsHandler()) // set cors
@@ -47,28 +100,12 @@ func (s *Server) Init() {
 	s.RegisterRoutes()
 }
 
-// RegisterUser 路由器 ——————user_manager
-func (s *Server) RegisterUser(g *gin.RouterGroup) {
-	userGroup := g.Group("/user")
-	{
-		userGroup.POST("/", s.PostUser)   // 注册
-		userGroup.POST("/login", s.Login) // 登录
-	}
-
-	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
-	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
-	{
-		securedGroup.GET("/", s.GetSomeUser)      //查一堆
-		securedGroup.GET("/:id", s.GetOneUser)    //查一个
-		userGroup.PUT("/:id", s.PutUser)          //改一个
-		securedGroup.DELETE("/:id", s.DeleteUser) //删一个
-	}
-}
-
+// RegisterRoutes 注册路由
 func (s *Server) RegisterRoutes() {
 	v1 := s.app.Group("/api/v1")
 	s.RegisterUser(v1) //调用middleware的路由组
 	s.RegisterLabel(v1)
+	s.RegisterProblem(v1)
 }
 
 func (s *Server) Run() error {

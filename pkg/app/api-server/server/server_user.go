@@ -51,6 +51,7 @@ func (s *Server) Login(c *gin.Context) {
 // GetOneUser 构造query条件查用户 /:id
 func (s *Server) GetOneUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
+	//把参数解析到结构体user
 	var user *models.User
 	if err := c.BindJSON(&user); err != nil {
 		return
