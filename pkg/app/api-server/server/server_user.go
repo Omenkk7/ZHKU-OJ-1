@@ -25,10 +25,14 @@ func (s *Server) PostUser(c *gin.Context) {
 		return
 	}
 	//调用service_user层
-	res := s.svc.PostUser(postUser)
+	res, err := s.svc.PostUser(postUser)
 	//返回结果
-	res.Response(c, res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // Login 登录 /login
@@ -42,25 +46,34 @@ func (s *Server) Login(c *gin.Context) {
 		return
 	}
 	//调用service_user层
-	res := s.svc.UserLogin(loginUser)
+	res, err := s.svc.UserLogin(loginUser)
 	//返回结果
-	res.Response(c, res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // GetOneUser 构造query条件查用户 /:id
 func (s *Server) GetOneUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
+	//把参数解析到结构体user
 	var user *models.User
 	if err := c.BindJSON(&user); err != nil {
 		return
 	}
 	lg.Println("条件查询用户......")
 	//调用service_user层
-	res := s.svc.GetOneUser(user)
+	res, err := s.svc.GetOneUser(user)
 	//返回结果
-	res.Response(c, res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // GetSomeUser 查一堆用户 /
@@ -70,7 +83,9 @@ func (s *Server) GetSomeUser(c *gin.Context) {
 	query := c.Request.URL.Query()
 	cq := utils.BuildCommonQuery(utils.Query(query))
 	lg.Info("get", cq)
+	//调用service_user层
 	res, err := s.svc.GetUserList(cq)
+	//返回结果
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
@@ -91,10 +106,14 @@ func (s *Server) PutUser(c *gin.Context) {
 	}
 
 	//调用service_user层
-	res := s.svc.UpdateUser(user)
+	res, err := s.svc.UpdateUser(user)
 	//返回结果
-	res.Response(c, res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // DeleteUser 通过id删一个用户 /:id
@@ -103,8 +122,12 @@ func (s *Server) DeleteUser(c *gin.Context) {
 	lg.Info("删用户......")
 	id := c.Param("id")
 	//调用service_user层
-	res := s.svc.DeleteUser(id)
+	res, err := s.svc.DeleteUser(id)
 	//返回结果
-	res.Response(c, res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }

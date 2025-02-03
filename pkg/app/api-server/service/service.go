@@ -10,10 +10,12 @@ package service
 import (
 	"context"
 	"zhku-oj-server/pkg/dao"
+	"zhku-oj-server/pkg/utils"
 )
 
 type Service struct {
 	dao *dao.Dao
+	res *utils.Result
 }
 
 func NewService() *Service {

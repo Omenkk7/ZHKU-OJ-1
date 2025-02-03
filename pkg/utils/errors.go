@@ -25,6 +25,10 @@ const (
 	ProblemOrAuthorCannotBeNull = "题目名称和出题人不能为空!"
 	ProblemIsExist              = "题目已存在！"
 	ProblemNotExist             = "题目不存在!"
+
+	LabelOrAuthorCannotBeNull = "标签名称和出题人不能为空!"
+	LabelIsExist              = "标签已存在！"
+	LabelNotExist             = "标签不存在!"
 )
 
 func New(s string) error {
