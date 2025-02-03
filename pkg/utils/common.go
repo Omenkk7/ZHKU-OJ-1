@@ -80,28 +80,28 @@ type JsonTime struct {
 	time.Time
 }
 
-func NewJsonTimeWithTimestamp(t int64) JsonTime {
-	return JsonTime{Time: time.Unix(t, 0)}
+func NewJsonTimeWithTimestamp(t int64) *JsonTime {
+	return &JsonTime{Time: time.Unix(t, 0)}
 }
 
-func NewJsonTimeWithTime(t time.Time) JsonTime {
-	return JsonTime{
+func NewJsonTimeWithTime(t time.Time) *JsonTime {
+	return &JsonTime{
 		Time: t,
 	}
 }
 
-func NowJsonTime() JsonTime {
-	return JsonTime{
+func NowJsonTime() *JsonTime {
+	return &JsonTime{
 		Time: time.Now(),
 	}
 }
 
-func (t JsonTime) MarshalJSON() ([]byte, error) {
+func (t *JsonTime) MarshalJSON() ([]byte, error) {
 	var stamp = fmt.Sprintf("\"%s\"", t.Format("2006-01-02 15:04:05"))
 	return []byte(stamp), nil
 }
 
-func (t JsonTime) Value() (driver.Value, error) {
+func (t *JsonTime) Value() (driver.Value, error) {
 	var zeroTime time.Time
 	if t.Time.UnixNano() == zeroTime.UnixNano() {
 		return nil, nil
@@ -134,8 +134,9 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 type JWTClaims struct {
-	ID   primitive.ObjectID `json:"_id"`
-	Role int32              `json:"role"` // 0-> user; 1-> admin
+	ID       primitive.ObjectID `json:"_id"`
+	Username string             `json:"username"`
+	Role     int32              `json:"role"` // 0-> user; 1-> admin
 	jwt.StandardClaims
 }
 

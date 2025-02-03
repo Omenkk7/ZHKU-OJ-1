@@ -49,6 +49,7 @@ func (d *Dao) GetOneUser(ctx context.Context, query interface{}) (user *models.U
 }
 
 func (d *Dao) DeleteUser(ctx context.Context, selector bson.M) (err error) {
+	// TODO://删除成功，默认把_id返回去，统一都是返回两个参数
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Println("删除：", selector)
@@ -57,6 +58,7 @@ func (d *Dao) DeleteUser(ctx context.Context, selector bson.M) (err error) {
 }
 
 func (d *Dao) UpdateUser(ctx context.Context, selector bson.M, update bson.M) (err error) {
+	// TODO://更新成功，默认把_id返回去，统一都是返回两个参数
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Println("修改：", selector, update)
