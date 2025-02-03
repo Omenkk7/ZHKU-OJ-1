@@ -10,12 +10,11 @@ import (
 	"zhku-oj-server/pkg/utils"
 )
 
-func (s *Service) PostLabel(res *utils.Result, reqLabel *dto.ReqLabel) {
+func (s *Service) PostLabel(reqLabel *dto.ReqLabel) (data interface{}, err error) {
 	lg := utils.GetDefaultLogger()
 	//1.标签名称和作者不能为空
 	if reqLabel.Name == "" || reqLabel.Creator == "" {
 		lg.Info(utils.LabelOrAuthorCannotBeNull)
-		res.Fail(utils.LabelOrAuthorCannotBeNull)
 		return
 	}
 	//2.检查标签是否存在
@@ -25,7 +24,6 @@ func (s *Service) PostLabel(res *utils.Result, reqLabel *dto.ReqLabel) {
 	dtoLabel, _ := s.dao.GetOneLabel(context.Background(), query)
 	if dtoLabel != nil {
 		lg.Infof("标签%s已存在", dtoLabel.Name)
-		res.Fail(utils.LabelIsExist)
 		return
 	}
 	//3.标签不存在，一切正常，构建入库模型
@@ -37,30 +35,27 @@ func (s *Service) PostLabel(res *utils.Result, reqLabel *dto.ReqLabel) {
 		Mtime:   time.Now().Unix(),
 	}
 	//4.入库
-	_, err := s.dao.CreateLabel(context.Background(), dtoLabel)
+	_, err = s.dao.CreateLabel(context.Background(), dtoLabel)
 	if err != nil {
 		lg.Info(utils.ServerErr, err)
-		res.Fail(utils.ServerErr)
 		return
 	}
-	res.Success(utils.CreateSuccess, "")
 	return
 }
 
 // GetLabelList  查一堆数据
-func (s *Service) GetLabelList(comQuery *utils.CommonQuery) (items *utils.RespPageQuery, err error) {
-	items, err = s.dao.GetLabelList(context.Background(), comQuery)
+func (s *Service) GetLabelList(comQuery *utils.CommonQuery) (data interface{}, err error) {
+	data, err = s.dao.GetLabelList(context.Background(), comQuery)
 	return
 }
 
 // GetOneLabel 查一个数据
-func (s *Service) GetOneLabel(res *utils.Result, label *models.Label) {
+func (s *Service) GetOneLabel(label *models.Label) (data interface{}, err error) {
 	lg := utils.GetDefaultLogger()
 	//构造bson
 	query, err := bson.Marshal(label)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
-		res.Fail(utils.ConstructingBsonErr)
 		return
 	}
 	lg.Infof("查询条件: %s", query)
@@ -68,15 +63,13 @@ func (s *Service) GetOneLabel(res *utils.Result, label *models.Label) {
 	daoLabel, err := s.dao.GetOneLabel(context.Background(), query)
 	if err != nil || label == nil {
 		lg.Info(utils.LabelNotExist, err)
-		res.Fail(utils.LabelNotExist)
 		return
 	}
-	//响应
-	res.Success(utils.SelectSuccess, daoLabel)
-	return
+	return daoLabel, nil
 }
 
-func (s *Service) UpdateLabel(res *utils.Result, reqLabel *dto.ReqLabel) {
+// UpdateLabel 更新数据
+func (s *Service) UpdateLabel(reqLabel *dto.ReqLabel) (data interface{}, err error) {
 	lg := utils.GetDefaultLogger()
 	//selector是筛选条件，update是要更新的内容
 	selector := bson.M{
@@ -86,22 +79,19 @@ func (s *Service) UpdateLabel(res *utils.Result, reqLabel *dto.ReqLabel) {
 	update, err := utils.GenerateUpdateBson(reqLabel)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
-		res.Fail(utils.ConstructingBsonErr)
 		return
 	}
 	lg.Infof("更新_id:%s\nselector:%s\n", reqLabel.ID, selector)
 	err = s.dao.UpdateLabel(context.Background(), selector, update)
 	if err != nil {
 		lg.Info(utils.UpdateErr, err)
-		res.Fail(utils.UpdateErr)
 		return
 	}
-	res.Success(utils.UpdateSuccess, "")
 	return
 }
 
 // DeleteLabel 通过id删除标签
-func (s *Service) DeleteLabel(res *utils.Result, id string) {
+func (s *Service) DeleteLabel(id string) (data interface{}, err error) {
 	lg := utils.GetDefaultLogger()
 	//1.删之前先查询是否有该条数据
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -114,7 +104,6 @@ func (s *Service) DeleteLabel(res *utils.Result, id string) {
 	daoLabel, err := s.dao.GetOneLabel(context.Background(), selector)
 	if err != nil || daoLabel == nil {
 		lg.Info(utils.LabelNotExist, err)
-		res.Fail(utils.LabelNotExist)
 		return
 	}
 
@@ -123,10 +112,8 @@ func (s *Service) DeleteLabel(res *utils.Result, id string) {
 	err = s.dao.DeleteLabel(context.Background(), selector)
 	if err != nil {
 		lg.Info(utils.DeleteErr, err)
-		res.Fail(utils.DeleteErr)
 		return
 	}
 	lg.Info(utils.DeleteSuccess)
-	res.Success(utils.DeleteSuccess, "")
 	return
 }

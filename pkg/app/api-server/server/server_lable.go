@@ -18,10 +18,14 @@ func (s *Server) PostLabel(c *gin.Context) {
 		return
 	}
 	//调用service_label层
-	s.svc.PostLabel(s.res, postLabel)
+	res, err := s.svc.PostLabel(postLabel)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // GetSomeLabel 查一堆标签
@@ -31,9 +35,11 @@ func (s *Server) GetSomeLabel(c *gin.Context) {
 	query := c.Request.URL.Query()
 	cq := utils.BuildCommonQuery(utils.Query(query))
 	lg.Info("get", cq)
+	//调用service_label层
 	res, err := s.svc.GetLabelList(cq)
+	//返回结果
 	if err != nil {
-		lg.Errorf("getLabelList: %v", err)
+		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
@@ -50,10 +56,14 @@ func (s *Server) GetOneLabel(c *gin.Context) {
 	}
 	lg.Println("条件查询标签......")
 	//调用service_label层
-	s.svc.GetOneLabel(s.res, label)
+	res, err := s.svc.GetOneLabel(label)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // PutLabel 修改标签
@@ -61,17 +71,21 @@ func (s *Server) PutLabel(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	lg.Info("通过id改一个用户......")
 
-	//把参数解析结构体ReqLabel到
-	var label *dto.ReqLabel
-	if err := c.BindJSON(&label); err != nil {
+	//把参数解析结构体到reqLabel
+	var reqLabel *dto.ReqLabel
+	if err := c.BindJSON(&reqLabel); err != nil {
 		return
 	}
 
 	//调用service_label层
-	s.svc.UpdateLabel(s.res, label)
+	res, err := s.svc.UpdateLabel(reqLabel)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // DeleteLabel 删除标签
@@ -80,8 +94,12 @@ func (s *Server) DeleteLabel(c *gin.Context) {
 	lg.Info("删标签......")
 	id := c.Param("id")
 	//调用service_label层
-	s.svc.DeleteLabel(s.res, id)
+	res, err := s.svc.DeleteLabel(id)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
