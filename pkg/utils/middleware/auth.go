@@ -8,18 +8,46 @@
 package middleware
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/net/context"
+	"net/url"
+	"strings"
 	"zhku-oj-server/pkg/dao"
 	"zhku-oj-server/pkg/utils"
 )
 
-// JWTInterceptor 拦截器 通用
-func JWTInterceptor() gin.HandlerFunc {
+var (
+	whiteList = map[string]string{
+		"/api/v1/user/":      "POST",
+		"/api/v1/user/login": "POST",
+	}
+)
+
+func withInWhiteList(url *url.URL, method string) bool {
+	target := whiteList
+	queryUrl := strings.Split(fmt.Sprint(url), "?")[0]
+	if _, ok := target[queryUrl]; ok {
+		if target[queryUrl] == method {
+			return true
+		}
+		return false
+	}
+	return false
+}
+
+// JWTMiddleware 拦截器 通用
+func JWTMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		lg := utils.GetDefaultLogger()
 		lg.Info("拦截请求......")
+
+		// TODO:// 配置白名单和黑名单
+		//if withInWhiteList(c.Request.URL, c.Request.Method) {
+		//	c.Next()
+		//	return
+		//}
 
 		// 从请求头中获取token
 		token := c.Request.Header.Get(utils.JwtTokenHeaderKey) //TODO 这个key好像是前端设置的，每次请求都自动携带
@@ -54,7 +82,12 @@ func JWTInterceptor() gin.HandlerFunc {
 		}
 
 		//校验成功，解析并拿到jwt的用户数据，存进gin.Context，可通过c.Get("user")重新获得数据
-		c.Set("User", user)
+		contextUser := &utils.ContextUser{
+			ID:       jwtClaims.ID.Hex(),
+			Username: jwtClaims.Username,
+			Role:     int(user.Role),
+		}
+		c.Set("contextUser", contextUser)
 		c.Next()
 	}
 }

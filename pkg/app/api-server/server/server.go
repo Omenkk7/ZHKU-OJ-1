@@ -56,7 +56,7 @@ func (s *Server) RegisterUser(g *gin.RouterGroup) {
 	}
 
 	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
-	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
+	securedGroup := userGroup.Group("/").Use(middleware.JWTMiddleware())
 	{
 		securedGroup.GET("/", s.GetSomeUser)      //查一堆
 		securedGroup.GET("/:id", s.GetOneUser)    //查一个
