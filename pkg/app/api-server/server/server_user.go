@@ -25,10 +25,14 @@ func (s *Server) PostUser(c *gin.Context) {
 		return
 	}
 	//调用service_user层
-	s.svc.PostUser(s.res, postUser)
+	res, err := s.svc.PostUser(postUser)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // Login 登录 /login
@@ -42,10 +46,14 @@ func (s *Server) Login(c *gin.Context) {
 		return
 	}
 	//调用service_user层
-	s.svc.UserLogin(s.res, loginUser)
+	res, err := s.svc.UserLogin(loginUser)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // GetOneUser 构造query条件查用户 /:id
@@ -58,10 +66,14 @@ func (s *Server) GetOneUser(c *gin.Context) {
 	}
 	lg.Println("条件查询用户......")
 	//调用service_user层
-	s.svc.GetOneUser(s.res, user)
+	res, err := s.svc.GetOneUser(user)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // GetSomeUser 查一堆用户 /
@@ -71,7 +83,9 @@ func (s *Server) GetSomeUser(c *gin.Context) {
 	query := c.Request.URL.Query()
 	cq := utils.BuildCommonQuery(utils.Query(query))
 	lg.Info("get", cq)
+	//调用service_user层
 	res, err := s.svc.GetUserList(cq)
+	//返回结果
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
@@ -92,10 +106,14 @@ func (s *Server) PutUser(c *gin.Context) {
 	}
 
 	//调用service_user层
-	s.svc.UpdateUser(s.res, user)
+	res, err := s.svc.UpdateUser(user)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // DeleteUser 通过id删一个用户 /:id
@@ -104,8 +122,12 @@ func (s *Server) DeleteUser(c *gin.Context) {
 	lg.Info("删用户......")
 	id := c.Param("id")
 	//调用service_user层
-	s.svc.DeleteUser(s.res, id)
+	res, err := s.svc.DeleteUser(id)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
