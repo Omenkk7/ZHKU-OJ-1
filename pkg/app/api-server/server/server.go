@@ -68,7 +68,6 @@ func (s *Server) RegisterUser(g *gin.RouterGroup) {
 func (s *Server) RegisterRoutes() {
 	v1 := s.app.Group("/api/v1")
 	s.RegisterUser(v1) //调用middleware的路由组
-	s.RegisterLabel(v1)
 }
 
 func (s *Server) Run() error {
