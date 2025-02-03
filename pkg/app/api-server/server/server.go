@@ -24,7 +24,6 @@ type Server struct {
 	app    *gin.Engine
 	svc    *service.Service
 	opts   *CmdOptions
-	res    *utils.Result
 	stopCh <-chan struct{}
 }
 
@@ -93,7 +92,6 @@ func NewServer(lg logrus.FieldLogger, svc *service.Service, opts *CmdOptions, st
 		svc:    svc,
 		opts:   opts,
 		stopCh: stopCh,
-		res:    &utils.Result{}, //初始化res，避免空指针
 	}
 }
 
