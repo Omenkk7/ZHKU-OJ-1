@@ -3,7 +3,6 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 	"zhku-oj-server/pkg/app/api-server/dto"
-	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 )
 
@@ -13,19 +12,19 @@ func (s *Server) PostLabel(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	lg.Info("添加标签......")
 	//把参数解析到postLabel
-	var postLabel *dto.ReqLabel
-	if err := c.BindJSON(&postLabel); err != nil {
+	var reqLabel *dto.ReqLabel
+	if err := c.BindJSON(&reqLabel); err != nil {
 		return
 	}
 	//调用service_label层
-	res, err := s.svc.PostLabel(postLabel)
+	err := s.svc.PostLabel(reqLabel)
 	//返回结果
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	utils.SuccessResponse(c, res)
+	utils.SuccessResponse(c)
 }
 
 // GetSomeLabel 查一堆标签
@@ -50,7 +49,7 @@ func (s *Server) GetSomeLabel(c *gin.Context) {
 func (s *Server) GetOneLabel(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	//把参数解析结构体到label
-	var label *models.Label
+	var label *dto.ReqLabel
 	if err := c.BindJSON(&label); err != nil {
 		return
 	}

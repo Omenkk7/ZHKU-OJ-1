@@ -3,6 +3,7 @@ package dao
 import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/context"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
@@ -38,21 +39,30 @@ func (d *Dao) GetOneLabel(ctx context.Context, query interface{}) (label *models
 	lg.Println("查询条件：", query)
 	//按query条件查询
 	err = d.mongo.FindOne(ctx, labelTable, query, &label)
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
 	return
 }
 
-func (d *Dao) DeleteLabel(ctx context.Context, selector bson.M) (err error) {
+func (d *Dao) DeleteLabel(ctx context.Context, selector bson.M) (objectID primitive.ObjectID, err error) {
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Println("删除：", selector)
 	_, err = d.mongo.Remove(ctx, labelTable, selector)
-	return
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+	return primitive.NilObjectID, nil
 }
 
-func (d *Dao) UpdateLabel(ctx context.Context, selector bson.M, update bson.M) (err error) {
+func (d *Dao) UpdateLabel(ctx context.Context, selector bson.M, update bson.M) (objectID primitive.ObjectID, err error) {
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Println("修改：", selector, update)
 	_, err = d.mongo.Upsert(ctx, labelTable, selector, update)
-	return
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+	return primitive.NilObjectID, nil
 }
