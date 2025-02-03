@@ -28,7 +28,7 @@ func (s *Service) UpdateUser(user *models.User) (res *utils.Result) {
 	hashPassword, _ := utils.HashPassword(user.Password) //hash加密
 	user.Password = hashPassword
 	//动态构造bson
-	update, err := utils.GenerateUpdateBson(user)
+	update, err := s.dao.GenerateUpdateBson(user)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
 		return res.Fail(utils.ConstructingBsonErr)
