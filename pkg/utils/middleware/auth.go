@@ -22,7 +22,7 @@ func JWTInterceptor() gin.HandlerFunc {
 		lg.Info("拦截请求......")
 
 		// 从请求头中获取token
-		token := c.Request.Header.Get("Authorization") //TODO 这个key好像是前端设置的，每次请求都自动携带
+		token := c.Request.Header.Get(utils.JwtTokenHeaderKey) //TODO 这个key好像是前端设置的，每次请求都自动携带
 
 		// 检查token是否存在
 		if token == "" {
@@ -42,11 +42,11 @@ func JWTInterceptor() gin.HandlerFunc {
 		}
 
 		//检查权限，判断是否为管理员
-		dao := dao.NewDao()
+		d := dao.NewDao()
 		query := bson.M{
 			"username": jwtClaims.Username, //旧jwt中的旧username数据
 		}
-		user, _ := dao.GetOneUser(context.Background(), query) //user已为最新状态
+		user, _ := d.GetOneUser(context.Background(), query) //user已为最新状态
 		if user.Role == utils.StatusUser {
 			utils.BadRequest(c, utils.New(utils.NOPermissionErr))
 			c.Abort()

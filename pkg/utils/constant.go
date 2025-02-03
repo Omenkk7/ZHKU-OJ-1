@@ -55,7 +55,6 @@ const (
 	// Token jwt token
 	DefaultRole              = 1  //user
 	RoleAdmin                = 99 //user
-	Token                    = "X-Auth-Token"
 	JwtTokenSecretKey        = "zkoj10086"
 	JwtTokenHeaderKey        = "X-Auth-Token"
 	RememberEffectiveTime    = time.Hour * time.Duration(24*14)
