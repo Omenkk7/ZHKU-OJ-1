@@ -134,17 +134,15 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 type JWTClaims struct {
-	ID       primitive.ObjectID `json:"_id"`
-	Username string             `json:"username"`
-	Role     int32              `json:"role"` // 0-> user; 1-> admin
+	ID   primitive.ObjectID `json:"_id"`
+	Role int32              `json:"role"` // 0-> user; 1-> admin
 	jwt.StandardClaims
 }
 
 func GenerateStringToken(user *models.User) (string, error) {
 	claims := JWTClaims{
-		ID:       user.ID,
-		Username: user.Username,
-		Role:     user.Role,
+		ID:   user.ID,
+		Role: user.Role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			Issuer:    "urmsone",
