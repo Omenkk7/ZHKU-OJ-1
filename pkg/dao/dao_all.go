@@ -7,9 +7,11 @@ import (
 	"zhku-oj-server/pkg/utils"
 )
 
-//通用CURD  要传结构体、表名
+// 通用CURD  要传结构体、表名
+// 写成接口的模式
 
-func (d *Dao) Create(ctx context.Context, tableName string, model interface{}) (id string, err error) {
+// CreateOne 插入1条数据
+func (d *Dao) CreateOne(ctx context.Context, tableName string, model interface{}) (id string, err error) {
 	res, err := d.mongo.InsertOne(ctx, tableName, model)
 	if err != nil {
 		return "", err
@@ -20,7 +22,8 @@ func (d *Dao) Create(ctx context.Context, tableName string, model interface{}) (
 	return "", nil
 }
 
-func (d *Dao) GetList(ctx context.Context, tableName string, comQuery *utils.CommonQuery) (items *utils.RespPageQuery, err error) {
+// GetSome 列表查询
+func (d *Dao) GetSome(ctx context.Context, tableName string, comQuery *utils.CommonQuery) (items *utils.RespPageQuery, err error) {
 	lg := utils.GetDefaultLogger()
 	items = &utils.RespPageQuery{
 		Items: make([]*map[string]interface{}, 0),
@@ -33,6 +36,7 @@ func (d *Dao) GetList(ctx context.Context, tableName string, comQuery *utils.Com
 	return
 }
 
+// GetOne 查询一条
 func (d *Dao) GetOne(ctx context.Context, tableName string, model interface{}, query interface{}) (interface{}, error) {
 	//打印日志
 	lg := utils.GetDefaultLogger()
@@ -42,7 +46,8 @@ func (d *Dao) GetOne(ctx context.Context, tableName string, model interface{}, q
 	return model, err
 }
 
-func (d *Dao) Delete(ctx context.Context, tableName string, selector bson.M) (err error) {
+// DeleteOne 删除一条
+func (d *Dao) DeleteOne(ctx context.Context, tableName string, selector bson.M) (err error) {
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Println("删除：", selector)
@@ -50,6 +55,7 @@ func (d *Dao) Delete(ctx context.Context, tableName string, selector bson.M) (er
 	return
 }
 
+// Update 更新
 func (d *Dao) Update(ctx context.Context, tableName string, selector bson.M, update bson.M) (err error) {
 	//打印日志
 	lg := utils.GetDefaultLogger()
