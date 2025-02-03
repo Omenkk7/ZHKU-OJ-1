@@ -14,7 +14,9 @@ func (s *Server) GetSomeProblem(c *gin.Context) {
 	query := c.Request.URL.Query()
 	cq := utils.BuildCommonQuery(utils.Query(query))
 	lg.Info("get", cq)
+	//调用service_problem层
 	res, err := s.svc.GetProblemList(cq)
+	//返回结果
 	if err != nil {
 		lg.Errorf("getProbelmList: %v", err)
 		utils.BadRequest(c, err)
@@ -32,10 +34,14 @@ func (s *Server) GetOneProblem(c *gin.Context) {
 	}
 	lg.Println("条件查询题目......")
 	//调用service_problem层
-	s.svc.GetOneProblem(s.res, problem)
+	res, err := s.svc.GetOneProblem(problem)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getProbelmList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // PutProblem 通过id改题目
@@ -50,10 +56,14 @@ func (s *Server) PutProblem(c *gin.Context) {
 	}
 
 	//调用service_problem层
-	s.svc.UpdateProblem(s.res, problem)
+	res, err := s.svc.UpdateProblem(problem)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getProbelmList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // DeleteProblem 通过id删除题目
@@ -62,10 +72,14 @@ func (s *Server) DeleteProblem(c *gin.Context) {
 	lg.Info("删除题目......")
 	id := c.Param("id")
 	//调用service_problem层
-	s.svc.DeleteProblem(s.res, id)
+	res, err := s.svc.DeleteProblem(id)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getProbelmList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
 
 // PostProblem 添加题目
@@ -79,8 +93,12 @@ func (s *Server) PostProblem(c *gin.Context) {
 		return
 	}
 	//调用service_problem层
-	s.svc.PostProblem(s.res, reqProblem)
+	res, err := s.svc.PostProblem(reqProblem)
 	//返回结果
-	s.res.Response(c, s.res)
-	return
+	if err != nil {
+		lg.Errorf("getProbelmList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }
