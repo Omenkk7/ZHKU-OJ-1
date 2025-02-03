@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/context"
@@ -17,7 +18,7 @@ func (s *Service) PostLabel(reqLabel *dto.ReqLabel) (err error) {
 	//1.标签名称和作者不能为空
 	if reqLabel.Name == "" || reqLabel.Creator == "" {
 		lg.Info(utils.LabelOrAuthorCannotBeNull)
-		return
+		return errors.New(utils.LabelOrAuthorCannotBeNull)
 	}
 	//2.检查标签是否存在
 	query := bson.M{
@@ -26,13 +27,13 @@ func (s *Service) PostLabel(reqLabel *dto.ReqLabel) (err error) {
 	dtoLabel, _ := s.dao.GetOneLabel(context.Background(), query)
 	if dtoLabel != nil {
 		lg.Infof("标签%s已存在", dtoLabel.Name)
-		return
+		return errors.New(utils.LabelIsExist)
 	}
 	//3.标签不存在，一切正常，构建入库模型
 	dtoLabel = &models.Label{
 		Name:    reqLabel.Name,
 		Creator: reqLabel.Creator,
-		Status:  utils.StatusPublic,
+		Status:  reqLabel.Status,
 		Ctime:   time.Now().Unix(),
 		Mtime:   time.Now().Unix(),
 	}
@@ -40,7 +41,7 @@ func (s *Service) PostLabel(reqLabel *dto.ReqLabel) (err error) {
 	_, err = s.dao.CreateLabel(context.Background(), dtoLabel)
 	if err != nil {
 		lg.Info(utils.ServerErr, err)
-		return
+		return err
 	}
 	return
 }
@@ -58,55 +59,56 @@ func (s *Service) GetOneLabel(reqLabel *dto.ReqLabel) (daoLabel *models.Label, e
 	query, err := bson.Marshal(reqLabel)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
-		return
+		return nil, errors.New(utils.ConstructingBsonErr)
 	}
 	lg.Infof("查询条件: %s", query)
 	//调用Dao查询daoLabel
 	daoLabel, err = s.dao.GetOneLabel(context.Background(), query)
-	if err != nil || daoLabel == nil {
+	if daoLabel == nil {
 		lg.Info(utils.LabelNotExist, err)
-		return
+		return nil, errors.New(utils.LabelNotExist)
 	}
 	return daoLabel, nil
 }
 
 // UpdateLabel 更新数据
-func (s *Service) UpdateLabel(reqLabel *dto.ReqLabel) (id primitive.ObjectID, err error) {
+func (s *Service) UpdateLabel(reqLabel *dto.ReqLabel) (id string, err error) {
 	lg := utils.GetDefaultLogger()
 	//selector是筛选条件，update是要更新的内容
+	objectId, _ := primitive.ObjectIDFromHex(reqLabel.ID)
 	selector := bson.M{
-		"_id": reqLabel.ID,
+		"_id": objectId,
 	}
 	//动态构造bson
 	update, err := dao.GenerateUpdateBson(reqLabel)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
-		return
+		return "", errors.New(utils.ConstructingBsonErr)
 	}
 	lg.Infof("更新_id:%s\nselector:%s\n", reqLabel.ID, selector)
 	_, err = s.dao.UpdateLabel(context.Background(), selector, update)
 	if err != nil {
 		lg.Info(utils.UpdateErr, err)
-		return
+		return "", errors.New(utils.UpdateErr)
 	}
 	return reqLabel.ID, nil
 }
 
 // DeleteLabel 通过id删除标签
-func (s *Service) DeleteLabel(id string) (objectId primitive.ObjectID, err error) {
+func (s *Service) DeleteLabel(id string) (_ string, err error) { //返回的id类型应该为string，不然全是0
 	lg := utils.GetDefaultLogger()
 	//1.删之前先查询是否有该条数据
-	objectId, _ = primitive.ObjectIDFromHex(id)
+	objectId, _ := primitive.ObjectIDFromHex(id)
 	selector := bson.M{
 		"_id": objectId,
 	}
 	lg.Infof("查询_id: %s", objectId)
 
 	//2.调用Dao查询daoLabel
-	daoLabel, err := s.dao.GetOneLabel(context.Background(), selector)
-	if err != nil || daoLabel == nil {
+	_, err = s.dao.GetOneLabel(context.Background(), selector)
+	if err != nil {
 		lg.Info(utils.LabelNotExist, err)
-		return
+		return "", errors.New(utils.LabelNotExist)
 	}
 
 	//3.删除
@@ -114,8 +116,8 @@ func (s *Service) DeleteLabel(id string) (objectId primitive.ObjectID, err error
 	_, err = s.dao.DeleteLabel(context.Background(), selector)
 	if err != nil {
 		lg.Info(utils.DeleteErr, err)
-		return
+		return "", errors.New(utils.DeleteErr)
 	}
 	lg.Info(utils.DeleteSuccess)
-	return objectId, nil
+	return id, nil
 }

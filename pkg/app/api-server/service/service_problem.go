@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/context"
@@ -17,16 +18,16 @@ func (s *Service) PostProblem(reqProblem *dto.ReqProblem) (err error) {
 	//1.题目名称和出题人不能为空
 	if reqProblem.Title == "" || reqProblem.Creator == "" {
 		lg.Info(utils.ProblemOrAuthorCannotBeNull)
-		return
+		return errors.New(utils.ProblemOrAuthorCannotBeNull)
 	}
 	//2.检查题目是否存在
 	query := bson.M{
-		"name": reqProblem.Title,
+		"title": reqProblem.Title,
 	}
 	dtoProblem, _ := s.dao.GetOneProblem(context.Background(), query)
 	if dtoProblem != nil {
 		lg.Infof("题目%s已存在", reqProblem.Title)
-		return
+		return errors.New(utils.ProblemIsExist)
 	}
 	//TODO ————————————————————文件存储和入库，要保证事务性————————————————————————
 	//3.题目不存在，一切正常，构建入库模型
@@ -51,7 +52,7 @@ func (s *Service) PostProblem(reqProblem *dto.ReqProblem) (err error) {
 	_, err = s.dao.CreateProblem(context.Background(), dtoProblem)
 	if err != nil {
 		lg.Info(utils.ServerErr, err)
-		return
+		return errors.New(utils.ServerErr)
 	}
 	//TODO —————————————————————————————保证事务一致性———————————————————————————————————————-
 	return
@@ -70,43 +71,45 @@ func (s *Service) GetOneProblem(reqProblem *models.Problem) (daoProblem *models.
 	query, err := bson.Marshal(reqProblem)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
-		return
+		return nil, errors.New(utils.ConstructingBsonErr)
 	}
 	lg.Infof("查询条件: %s", query)
 	//调用Dao查询daoProblem
 	daoProblem, err = s.dao.GetOneProblem(context.Background(), query)
-	if err != nil || reqProblem == nil {
+	if daoProblem == nil {
 		lg.Info(utils.ProblemNotExist, err)
-		return
+		return nil, errors.New(utils.ProblemNotExist)
 	}
 	//响应
 	return daoProblem, nil
 }
 
 // UpdateProblem 更新题目
-func (s *Service) UpdateProblem(reqProblem *dto.ReqProblem) (objectID primitive.ObjectID, err error) {
+func (s *Service) UpdateProblem(reqProblem *dto.ReqProblem) (id string, err error) {
 	lg := utils.GetDefaultLogger()
 	//selector是筛选条件，update是要更新的内容
+	objectId, _ := primitive.ObjectIDFromHex(reqProblem.ID)
 	selector := bson.M{
-		"_id": reqProblem.ID,
+		"_id": objectId,
 	}
+	reqProblem.Mtime = time.Now().Unix()
 	//动态构造bson
 	update, err := dao.GenerateUpdateBson(reqProblem)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
-		return
+		return "", errors.New(utils.ConstructingBsonErr)
 	}
 	lg.Infof("更新_id:%s\nselector:%s\n", reqProblem.ID, selector)
 	_, err = s.dao.UpdateProblem(context.Background(), selector, update)
 	if err != nil {
 		lg.Info(utils.UpdateErr, err)
-		return
+		return "", errors.New(utils.UpdateErr)
 	}
-	return objectID, nil
+	return reqProblem.ID, nil
 }
 
 // DeleteProblem 通过id删除题目
-func (s *Service) DeleteProblem(id string) (objectID primitive.ObjectID, err error) {
+func (s *Service) DeleteProblem(id string) (_ string, err error) {
 	lg := utils.GetDefaultLogger()
 	//1.删之前先查询是否有该条数据
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -117,9 +120,9 @@ func (s *Service) DeleteProblem(id string) (objectID primitive.ObjectID, err err
 
 	//2.调用Dao查询daoProblem
 	daoProblem, err := s.dao.GetOneProblem(context.Background(), selector)
-	if err != nil || daoProblem == nil {
+	if daoProblem == nil {
 		lg.Info(utils.ProblemNotExist, err)
-		return
+		return "", errors.New(utils.ProblemNotExist)
 	}
 
 	//3.删除
@@ -127,8 +130,8 @@ func (s *Service) DeleteProblem(id string) (objectID primitive.ObjectID, err err
 	_, err = s.dao.DeleteProblem(context.Background(), selector)
 	if err != nil {
 		lg.Info(utils.DeleteErr, err)
-		return
+		return "", errors.New(utils.DeleteErr)
 	}
 	lg.Info(utils.DeleteSuccess)
-	return objectID, nil
+	return id, nil
 }

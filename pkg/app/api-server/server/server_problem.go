@@ -50,13 +50,13 @@ func (s *Server) PutProblem(c *gin.Context) {
 	lg.Info("通过id改一个题目......")
 
 	//把参数解析到结构体ReqProblem
-	var problem *dto.ReqProblem
-	if err := c.BindJSON(&problem); err != nil {
+	var reqProblem *dto.ReqProblem
+	if err := c.BindJSON(&reqProblem); err != nil {
 		return
 	}
 
 	//调用service_problem层
-	res, err := s.svc.UpdateProblem(problem)
+	res, err := s.svc.UpdateProblem(reqProblem)
 	//返回结果
 	if err != nil {
 		lg.Errorf("getProbelmList: %v", err)

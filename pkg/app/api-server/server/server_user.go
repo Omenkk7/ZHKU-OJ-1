@@ -59,13 +59,13 @@ func (s *Server) Login(c *gin.Context) {
 func (s *Server) GetOneUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	//把参数解析到结构体user
-	var user *dto.ReqUser
-	if err := c.BindJSON(&user); err != nil {
+	var reqUser *dto.ReqUser
+	if err := c.BindJSON(&reqUser); err != nil {
 		return
 	}
 	lg.Println("条件查询用户......")
 	//调用service_user层
-	res, err := s.svc.GetOneUser(user)
+	res, err := s.svc.GetOneUser(reqUser)
 	//返回结果
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)
@@ -98,14 +98,13 @@ func (s *Server) PutUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	lg.Info("通过id改一个用户......")
 
-	//把参数解析到结构体loginUser
-	var user *dto.ReqUser
-	if err := c.BindJSON(&user); err != nil {
+	//把参数解析到结构体user
+	var reqUser *dto.ReqUser
+	if err := c.BindJSON(&reqUser); err != nil {
 		return
 	}
-
 	//调用service_user层
-	res, err := s.svc.UpdateUser(user)
+	res, err := s.svc.UpdateUser(reqUser)
 	//返回结果
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)

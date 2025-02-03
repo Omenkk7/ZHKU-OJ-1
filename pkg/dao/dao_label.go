@@ -29,7 +29,7 @@ func (d *Dao) GetLabelList(ctx context.Context, comQuery *utils.CommonQuery) (it
 	opts := utils.BuildMongoOptions(comQuery)
 	lg.Println(opts)
 	lg.Println(comQuery.Filters)
-	err = d.mongo.FindSome(ctx, ProblemTable, comQuery.Filters, items, opts)
+	err = d.mongo.FindSome(ctx, labelTable, comQuery.Filters, items, opts)
 	return
 }
 
@@ -42,7 +42,7 @@ func (d *Dao) GetOneLabel(ctx context.Context, query interface{}) (label *models
 	if err == mongo.ErrNoDocuments {
 		return nil, nil
 	}
-	return
+	return label, nil
 }
 
 func (d *Dao) DeleteLabel(ctx context.Context, selector bson.M) (objectID primitive.ObjectID, err error) {
