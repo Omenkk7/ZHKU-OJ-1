@@ -10,11 +10,8 @@ package middleware
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson"
-	"golang.org/x/net/context"
 	"net/url"
 	"strings"
-	"zhku-oj-server/pkg/dao"
 	"zhku-oj-server/pkg/utils"
 )
 
@@ -50,7 +47,7 @@ func JWTMiddleware() gin.HandlerFunc {
 		//}
 
 		// 从请求头中获取token
-		token := c.Request.Header.Get(utils.JwtTokenHeaderKey) //TODO 这个key好像是前端设置的，每次请求都自动携带
+		token := c.Request.Header.Get("Authorization") //TODO 这个key好像是前端设置的，每次请求都自动携带
 
 		// 检查token是否存在
 		if token == "" {
@@ -70,12 +67,13 @@ func JWTMiddleware() gin.HandlerFunc {
 		}
 
 		//检查权限，判断是否为管理员
-		d := dao.NewDao()
+		/*dao := dao.NewDao()
 		query := bson.M{
 			"username": jwtClaims.Username, //旧jwt中的旧username数据
 		}
-		user, _ := d.GetOneUser(context.Background(), query) //user已为最新状态
-		if user.Role == utils.StatusUser {
+		user, _ := dao.GetOneUser(context.Background(), query) //user已为最新状态*/
+		//TODO 权限控制，目前的逻辑可能会造成数据不一致
+		if jwtClaims.Role == utils.StatusUser {
 			utils.BadRequest(c, utils.New(utils.NOPermissionErr))
 			c.Abort()
 			return
@@ -85,7 +83,7 @@ func JWTMiddleware() gin.HandlerFunc {
 		contextUser := &utils.ContextUser{
 			ID:       jwtClaims.ID.Hex(),
 			Username: jwtClaims.Username,
-			Role:     int(user.Role),
+			Role:     int(jwtClaims.Role),
 		}
 		c.Set("contextUser", contextUser)
 		c.Next()

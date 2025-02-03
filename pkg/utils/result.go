@@ -6,43 +6,6 @@ import (
 )
 
 // Result 统一响应格式
-type Result struct {
-	Code int32       `json:"code"` //状态码
-	Msg  string      `json:"msg"`
-	Data interface{} `json:"data"`
-}
-
-func (r *Result) Success(msg string, data interface{}) *Result {
-	return &Result{
-		Code: 0,
-		Msg:  msg,
-		Data: data,
-	}
-}
-
-func (r *Result) Fail(msg string) *Result {
-	return &Result{
-		Code: -1,
-		Msg:  msg,
-		Data: "null",
-	}
-}
-
-func (r *Result) Response(c *gin.Context, res *Result) {
-	if res.Code == 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"code": 0,
-			"msg":  res.Msg,
-			"data": res.Data,
-		})
-	} else {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code": -1,
-			"msg":  res.Msg,
-			"data": "null",
-		})
-	}
-}
 
 //原utils/response
 
