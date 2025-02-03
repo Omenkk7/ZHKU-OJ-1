@@ -32,9 +32,9 @@ func (s *Server) GetOneProblem(c *gin.Context) {
 	}
 	lg.Println("条件查询题目......")
 	//调用service_problem层
-	res := s.svc.GetOneProblem(problem)
+	s.svc.GetOneProblem(s.res, problem)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -50,9 +50,9 @@ func (s *Server) PutProblem(c *gin.Context) {
 	}
 
 	//调用service_problem层
-	res := s.svc.UpdateProblem(problem)
+	s.svc.UpdateProblem(s.res, problem)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -62,9 +62,9 @@ func (s *Server) DeleteProblem(c *gin.Context) {
 	lg.Info("删除题目......")
 	id := c.Param("id")
 	//调用service_problem层
-	res := s.svc.DeleteProblem(id)
+	s.svc.DeleteProblem(s.res, id)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -79,8 +79,8 @@ func (s *Server) PostProblem(c *gin.Context) {
 		return
 	}
 	//调用service_problem层
-	res := s.svc.PostProblem(reqProblem)
+	s.svc.PostProblem(s.res, reqProblem)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }

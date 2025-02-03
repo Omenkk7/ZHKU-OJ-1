@@ -25,9 +25,9 @@ func (s *Server) PostUser(c *gin.Context) {
 		return
 	}
 	//调用service_user层
-	res := s.svc.PostUser(postUser)
+	s.svc.PostUser(s.res, postUser)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -42,9 +42,9 @@ func (s *Server) Login(c *gin.Context) {
 		return
 	}
 	//调用service_user层
-	res := s.svc.UserLogin(loginUser)
+	s.svc.UserLogin(s.res, loginUser)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -58,9 +58,9 @@ func (s *Server) GetOneUser(c *gin.Context) {
 	}
 	lg.Println("条件查询用户......")
 	//调用service_user层
-	res := s.svc.GetOneUser(user)
+	s.svc.GetOneUser(s.res, user)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -92,9 +92,9 @@ func (s *Server) PutUser(c *gin.Context) {
 	}
 
 	//调用service_user层
-	res := s.svc.UpdateUser(user)
+	s.svc.UpdateUser(s.res, user)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -104,8 +104,8 @@ func (s *Server) DeleteUser(c *gin.Context) {
 	lg.Info("删用户......")
 	id := c.Param("id")
 	//调用service_user层
-	res := s.svc.DeleteUser(id)
+	s.svc.DeleteUser(s.res, id)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }

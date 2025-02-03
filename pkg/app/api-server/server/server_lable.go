@@ -18,9 +18,9 @@ func (s *Server) PostLabel(c *gin.Context) {
 		return
 	}
 	//调用service_label层
-	res := s.svc.PostLabel(postLabel)
+	s.svc.PostLabel(s.res, postLabel)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -50,9 +50,9 @@ func (s *Server) GetOneLabel(c *gin.Context) {
 	}
 	lg.Println("条件查询标签......")
 	//调用service_label层
-	res := s.svc.GetOneLabel(label)
+	s.svc.GetOneLabel(s.res, label)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -68,9 +68,9 @@ func (s *Server) PutLabel(c *gin.Context) {
 	}
 
 	//调用service_label层
-	res := s.svc.UpdateLabel(label)
+	s.svc.UpdateLabel(s.res, label)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }
 
@@ -80,8 +80,8 @@ func (s *Server) DeleteLabel(c *gin.Context) {
 	lg.Info("删标签......")
 	id := c.Param("id")
 	//调用service_label层
-	res := s.svc.DeleteLabel(id)
+	s.svc.DeleteLabel(s.res, id)
 	//返回结果
-	res.Response(c, res)
+	s.res.Response(c, s.res)
 	return
 }

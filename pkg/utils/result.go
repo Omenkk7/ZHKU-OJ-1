@@ -12,20 +12,16 @@ type Result struct {
 	Data interface{} `json:"data"`
 }
 
-func (r *Result) Success(msg string, data interface{}) *Result {
-	return &Result{
-		Code: 0,
-		Msg:  msg,
-		Data: data,
-	}
+func (r *Result) Success(msg string, data interface{}) {
+	r.Code = 0
+	r.Msg = msg
+	r.Data = data
 }
 
-func (r *Result) Fail(msg string) *Result {
-	return &Result{
-		Code: -1,
-		Msg:  msg,
-		Data: "null",
-	}
+func (r *Result) Fail(msg string) {
+	r.Code = -1
+	r.Msg = msg
+	r.Data = "null"
 }
 
 func (r *Result) Response(c *gin.Context, res *Result) {
@@ -39,7 +35,7 @@ func (r *Result) Response(c *gin.Context, res *Result) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code": -1,
 			"msg":  res.Msg,
-			"data": "null",
+			"data": res.Data,
 		})
 	}
 }

@@ -11,12 +11,13 @@ import (
 )
 
 // PostProblem 新建题目
-func (s *Service) PostProblem(reqPostProblem *dto.ReqProblem) (res *utils.Result) {
+func (s *Service) PostProblem(res *utils.Result, reqPostProblem *dto.ReqProblem) {
 	lg := utils.GetDefaultLogger()
 	//1.题目名称和出题人不能为空
 	if reqPostProblem.Title == "" || reqPostProblem.Creator == "" {
 		lg.Info(utils.ProblemOrAuthorCannotBeNull)
-		return res.Fail(utils.ProblemOrAuthorCannotBeNull)
+		res.Fail(utils.ProblemOrAuthorCannotBeNull)
+		return
 	}
 	//2.检查题目是否存在
 	query := bson.M{
@@ -25,7 +26,8 @@ func (s *Service) PostProblem(reqPostProblem *dto.ReqProblem) (res *utils.Result
 	dtoProblem, _ := s.dao.GetOneProblem(context.Background(), query)
 	if dtoProblem != nil {
 		lg.Infof("题目%s已存在", reqPostProblem.Title)
-		return res.Fail(utils.ProblemIsExist)
+		res.Fail(utils.ProblemIsExist)
+		return
 	}
 	//TODO ————————————————————文件存储和入库，要保证事务性————————————————————————
 	//3.题目不存在，一切正常，构建入库模型
@@ -50,10 +52,12 @@ func (s *Service) PostProblem(reqPostProblem *dto.ReqProblem) (res *utils.Result
 	_, err := s.dao.CreateProblem(context.Background(), dtoProblem)
 	if err != nil {
 		lg.Info(utils.ServerErr, err)
-		return res.Fail(utils.ServerErr)
+		res.Fail(utils.ServerErr)
+		return
 	}
 	//TODO —————————————————————————————保证事务一致性———————————————————————————————————————-
-	return res.Success(utils.CreateSuccess, "")
+	res.Success(utils.CreateSuccess, "")
+	return
 }
 
 // GetProblemList  查一堆数据
@@ -63,27 +67,30 @@ func (s *Service) GetProblemList(comQuery *utils.CommonQuery) (items *utils.Resp
 }
 
 // GetOneProblem 查一个数据
-func (s *Service) GetOneProblem(reqProblem *models.Problem) (res *utils.Result) {
+func (s *Service) GetOneProblem(res *utils.Result, reqProblem *models.Problem) {
 	lg := utils.GetDefaultLogger()
 	//构造bson
 	query, err := bson.Marshal(reqProblem)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
-		return res.Fail(utils.ConstructingBsonErr)
+		res.Fail(utils.ConstructingBsonErr)
+		return
 	}
 	lg.Infof("查询条件: %s", query)
 	//调用Dao查询daoProblem
 	daoProblem, err := s.dao.GetOneProblem(context.Background(), query)
 	if err != nil || reqProblem == nil {
 		lg.Info(utils.ProblemNotExist, err)
-		return res.Fail(utils.ProblemNotExist)
+		res.Fail(utils.ProblemNotExist)
+		return
 	}
 	//响应
-	return res.Success(utils.SelectSuccess, daoProblem)
+	res.Success(utils.SelectSuccess, daoProblem)
+	return
 }
 
 // UpdateProblem 更新题目
-func (s *Service) UpdateProblem(reqProblem *dto.ReqProblem) (res *utils.Result) {
+func (s *Service) UpdateProblem(res *utils.Result, reqProblem *dto.ReqProblem) {
 	lg := utils.GetDefaultLogger()
 	//selector是筛选条件，update是要更新的内容
 	selector := bson.M{
@@ -93,19 +100,22 @@ func (s *Service) UpdateProblem(reqProblem *dto.ReqProblem) (res *utils.Result) 
 	update, err := utils.GenerateUpdateBson(reqProblem)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
-		return res.Fail(utils.ConstructingBsonErr)
+		res.Fail(utils.ConstructingBsonErr)
+		return
 	}
 	lg.Infof("更新_id:%s\nselector:%s\n", reqProblem.ID, selector)
 	err = s.dao.UpdateProblem(context.Background(), selector, update)
 	if err != nil {
 		lg.Info(utils.UpdateErr, err)
-		return res.Fail(utils.UpdateErr)
+		res.Fail(utils.UpdateErr)
+		return
 	}
-	return res.Success(utils.UpdateSuccess, "")
+	res.Success(utils.UpdateSuccess, "")
+	return
 }
 
 // DeleteProblem 通过id删除题目
-func (s *Service) DeleteProblem(id string) (res *utils.Result) {
+func (s *Service) DeleteProblem(res *utils.Result, id string) {
 	lg := utils.GetDefaultLogger()
 	//1.删之前先查询是否有该条数据
 	objectId, _ := primitive.ObjectIDFromHex(id)
@@ -118,7 +128,8 @@ func (s *Service) DeleteProblem(id string) (res *utils.Result) {
 	daoProblem, err := s.dao.GetOneProblem(context.Background(), selector)
 	if err != nil || daoProblem == nil {
 		lg.Info(utils.ProblemNotExist, err)
-		return res.Fail(utils.ProblemNotExist)
+		res.Fail(utils.ProblemNotExist)
+		return
 	}
 
 	//3.删除
@@ -126,8 +137,10 @@ func (s *Service) DeleteProblem(id string) (res *utils.Result) {
 	err = s.dao.DeleteProblem(context.Background(), selector)
 	if err != nil {
 		lg.Info(utils.DeleteErr, err)
-		return res.Fail(utils.DeleteErr)
+		res.Fail(utils.DeleteErr)
+		return
 	}
 	lg.Info(utils.DeleteSuccess)
-	return res.Success(utils.DeleteSuccess, "")
+	res.Success(utils.DeleteSuccess, "")
+	return
 }
