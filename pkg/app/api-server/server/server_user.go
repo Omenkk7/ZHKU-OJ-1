@@ -10,7 +10,6 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 	"zhku-oj-server/pkg/app/api-server/dto"
-	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 )
 
@@ -25,14 +24,14 @@ func (s *Server) PostUser(c *gin.Context) {
 		return
 	}
 	//调用service_user层
-	res, err := s.svc.PostUser(postUser)
+	err := s.svc.PostUser(postUser)
 	//返回结果
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	utils.SuccessResponse(c, res)
+	utils.SuccessResponse(c)
 }
 
 // Login 登录 /login
@@ -60,7 +59,7 @@ func (s *Server) Login(c *gin.Context) {
 func (s *Server) GetOneUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	//把参数解析到结构体user
-	var user *models.User
+	var user *dto.ReqUser
 	if err := c.BindJSON(&user); err != nil {
 		return
 	}
@@ -100,7 +99,7 @@ func (s *Server) PutUser(c *gin.Context) {
 	lg.Info("通过id改一个用户......")
 
 	//把参数解析到结构体loginUser
-	var user *models.User
+	var user *dto.ReqUser
 	if err := c.BindJSON(&user); err != nil {
 		return
 	}

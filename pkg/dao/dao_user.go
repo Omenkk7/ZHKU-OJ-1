@@ -11,6 +11,7 @@ import (
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 )
@@ -36,7 +37,7 @@ func (d *Dao) GetUserList(ctx context.Context, comQuery *utils.CommonQuery) (ite
 	lg.Println(opts)
 	lg.Println(comQuery.Filters)
 	err = d.mongo.FindSome(ctx, userTable, comQuery.Filters, items, opts)
-	return
+	return items, nil
 }
 
 func (d *Dao) GetOneUser(ctx context.Context, query interface{}) (user *models.User, err error) {
@@ -45,23 +46,32 @@ func (d *Dao) GetOneUser(ctx context.Context, query interface{}) (user *models.U
 	lg.Println("查询条件：", query)
 	//按query条件查询
 	err = d.mongo.FindOne(ctx, userTable, query, &user)
-	return
+	if err == mongo.ErrNoDocuments {
+		return nil, nil
+	}
+	return user, nil
 }
 
-func (d *Dao) DeleteUser(ctx context.Context, selector bson.M) (err error) {
+func (d *Dao) DeleteUser(ctx context.Context, selector bson.M) (id primitive.ObjectID, err error) {
 	// TODO://删除成功，默认把_id返回去，统一都是返回两个参数
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Println("删除：", selector)
 	_, err = d.mongo.Remove(ctx, userTable, selector)
-	return
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+	return primitive.NilObjectID, nil
 }
 
-func (d *Dao) UpdateUser(ctx context.Context, selector bson.M, update bson.M) (err error) {
+func (d *Dao) UpdateUser(ctx context.Context, selector bson.M, update bson.M) (id primitive.ObjectID, err error) {
 	// TODO://更新成功，默认把_id返回去，统一都是返回两个参数
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Println("修改：", selector, update)
 	_, err = d.mongo.Upsert(ctx, userTable, selector, update)
-	return
+	if err != nil {
+		return primitive.NilObjectID, err
+	}
+	return primitive.NilObjectID, nil
 }

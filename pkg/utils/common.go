@@ -142,8 +142,9 @@ type JWTClaims struct {
 
 func GenerateStringToken(user *models.User) (string, error) {
 	claims := JWTClaims{
-		ID:   user.ID,
-		Role: user.Role,
+		ID:       user.ID,
+		Username: user.Username,
+		Role:     user.Role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			Issuer:    "urmsone",
