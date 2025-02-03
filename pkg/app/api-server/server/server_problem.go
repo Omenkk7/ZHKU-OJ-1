@@ -93,12 +93,12 @@ func (s *Server) PostProblem(c *gin.Context) {
 		return
 	}
 	//调用service_problem层
-	res, err := s.svc.PostProblem(reqProblem)
+	err := s.svc.PostProblem(reqProblem)
 	//返回结果
 	if err != nil {
 		lg.Errorf("getProbelmList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	utils.SuccessResponse(c, res)
+	utils.SuccessResponse(c)
 }
