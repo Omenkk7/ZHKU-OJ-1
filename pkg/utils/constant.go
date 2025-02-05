@@ -10,6 +10,24 @@ package utils
 import "time"
 
 const (
+	//成功
+	UpdateSuccess   = "更新成功"
+	DeleteSuccess   = "删除成功"
+	SelectSuccess   = "查询成功"
+	RegisterSuccess = "注册成功！"
+	LoginSuccess    = "登录成功"
+	CreateSuccess   = "创建成功！"
+
+	//账号状态
+	StatusBanned = 0
+	StatusNormal = 1
+	StatusUser   = 0
+	StatusAdmin  = 1
+
+	//题目状态
+	StatusPrivate = 0
+	StatusPublic  = 1
+
 	OneDaySeconds  = 86400
 	OneHourSeconds = 3600
 	TenMinutes     = 600
@@ -37,8 +55,7 @@ const (
 	// Token jwt token
 	DefaultRole              = 1  //user
 	RoleAdmin                = 99 //user
-	Token                    = "X-Auth-Token"
-	JwtTokenSecretKey        = "secretKey"
+	JwtTokenSecretKey        = "zkoj10086"
 	JwtTokenHeaderKey        = "X-Auth-Token"
 	RememberEffectiveTime    = time.Hour * time.Duration(24*14)
 	NotRememberEffectiveTime = time.Hour * time.Duration(2)

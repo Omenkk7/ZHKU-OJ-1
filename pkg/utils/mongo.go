@@ -151,6 +151,7 @@ func (m *MongoDB) RemoveMany(ctx context.Context, table string, selector interfa
 func (m *MongoDB) Upsert(ctx context.Context, table string, selector, doc interface{}) (ok bool, err error) {
 	ctx, cancel := context.WithTimeout(ctx, m.timeout)
 	defer cancel()
+	// 设置Upsert选项
 	res, err := m.client.Database(m.db).Collection(table).UpdateOne(ctx, selector, doc, options.Update().SetUpsert(true))
 	if err != nil {
 		logger := GetLogger(ctx)
