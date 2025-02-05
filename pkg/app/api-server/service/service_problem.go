@@ -7,7 +7,6 @@ import (
 	"golang.org/x/net/context"
 	"time"
 	"zhku-oj-server/pkg/app/api-server/dto"
-	"zhku-oj-server/pkg/dao"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 )
@@ -94,7 +93,7 @@ func (s *Service) UpdateProblem(reqProblem *dto.ReqProblem) (id string, err erro
 	}
 	reqProblem.Mtime = time.Now().Unix()
 	//动态构造bson
-	update, err := dao.GenerateUpdateBson(reqProblem)
+	update, err := s.dao.GenerateUpdateBson(reqProblem)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
 		return "", errors.New(utils.ConstructingBsonErr)

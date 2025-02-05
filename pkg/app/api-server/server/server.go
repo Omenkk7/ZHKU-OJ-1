@@ -9,6 +9,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -36,7 +37,7 @@ func (s *Server) RegisterUser(g *gin.RouterGroup) {
 	}
 
 	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
-	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
+	securedGroup := userGroup.Group("/").Use(middleware.JWTMiddleware())
 	{
 		securedGroup.GET("/", s.GetSomeUser)      //查一堆
 		securedGroup.GET("/:id", s.GetOneUser)    //查一个
@@ -54,7 +55,7 @@ func (s *Server) RegisterLabel(g *gin.RouterGroup) {
 		userGroup.GET("/:id", s.GetOneLabel) //查一个
 	}
 	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
-	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
+	securedGroup := userGroup.Group("/").Use(middleware.JWTMiddleware())
 	{
 		securedGroup.PUT("/:id", s.PutLabel)       //改一个
 		securedGroup.DELETE("/:id", s.DeleteLabel) //删一个
@@ -72,7 +73,7 @@ func (s *Server) RegisterProblem(g *gin.RouterGroup) {
 		userGroup.GET("/:id", s.GetOneProblem) //查一个
 	}
 	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
-	securedGroup := userGroup.Group("/").Use(middleware.JWTInterceptor())
+	securedGroup := userGroup.Group("/").Use(middleware.JWTMiddleware())
 	{
 		securedGroup.PUT("/:id", s.PutProblem)       //改一个
 		securedGroup.DELETE("/:id", s.DeleteProblem) //删一个
@@ -125,7 +126,7 @@ func (s *Server) Run() error {
 	}()
 
 	if err := srv.ListenAndServe(); err != nil {
-		if err == http.ErrServerClosed {
+		if errors.Is(err, http.ErrServerClosed) {
 			// 主动关闭server,如接收到控制台退出信号等...
 			s.lg.Println("Http Server closed, bye!")
 			return err

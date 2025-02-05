@@ -24,14 +24,15 @@ func (s *Server) PostUser(c *gin.Context) {
 		return
 	}
 	//调用service_user层
-	err := s.svc.PostUser(postUser)
+
+	id, err := s.svc.PostUser(postUser)
 	//返回结果
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	utils.SuccessResponse(c)
+	utils.SuccessResponse(c, gin.H{"id": id})
 }
 
 // Login 登录 /login

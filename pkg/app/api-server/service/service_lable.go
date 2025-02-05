@@ -7,7 +7,6 @@ import (
 	"golang.org/x/net/context"
 	"time"
 	"zhku-oj-server/pkg/app/api-server/dto"
-	"zhku-oj-server/pkg/dao"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 )
@@ -80,7 +79,7 @@ func (s *Service) UpdateLabel(reqLabel *dto.ReqLabel) (id string, err error) {
 		"_id": objectId,
 	}
 	//动态构造bson
-	update, err := dao.GenerateUpdateBson(reqLabel)
+	update, err := s.dao.GenerateUpdateBson(reqLabel)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
 		return "", errors.New(utils.ConstructingBsonErr)

@@ -32,7 +32,7 @@ func (d *Dao) Close(ctx context.Context) {
 }
 
 // GenerateUpdateBson 接收结构体，生成包含非空字段的 $set BSON
-func GenerateUpdateBson(model interface{}) (bson.M, error) {
+func (d *Dao) GenerateUpdateBson(model interface{}) (bson.M, error) {
 	updateFields := bson.M{}
 	val := reflect.ValueOf(model)
 
@@ -54,10 +54,10 @@ func GenerateUpdateBson(model interface{}) (bson.M, error) {
 
 		// 解析 bson 标签
 		bsonTag := field.Tag.Get("bson")
-		bsonField := parseBsonTag(bsonTag, field.Name)
+		bsonField := d.parseBsonTag(bsonTag, field.Name)
 
 		//不把ID转为bson,因为他是主键，修改会报错！！！
-		if bsonField == "_id" {
+		if bsonField == mongoID {
 			continue
 		}
 
@@ -81,7 +81,7 @@ func GenerateUpdateBson(model interface{}) (bson.M, error) {
 }
 
 // parseBsonTag 解析 bson 标签，返回字段名称
-func parseBsonTag(tag string, defaultName string) string {
+func (d *Dao) parseBsonTag(tag string, defaultName string) string {
 	if tag == "" {
 		return strings.ToLower(defaultName)
 	}

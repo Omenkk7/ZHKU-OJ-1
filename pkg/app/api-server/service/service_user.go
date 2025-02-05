@@ -14,12 +14,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 	"zhku-oj-server/pkg/app/api-server/dto"
-	"zhku-oj-server/pkg/dao"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 )
 
 // UpdateUser 通过id更新数据
+
 func (s *Service) UpdateUser(reqUser *dto.ReqUser) (id string, err error) {
 	lg := utils.GetDefaultLogger()
 	//selector是筛选条件，update是要更新的内容
@@ -32,7 +32,7 @@ func (s *Service) UpdateUser(reqUser *dto.ReqUser) (id string, err error) {
 	reqUser.Password = hashPassword
 	reqUser.Mtime = time.Now().Unix()
 	//动态构造bson
-	update, err := dao.GenerateUpdateBson(reqUser)
+	update, err := s.dao.GenerateUpdateBson(reqUser)
 	if err != nil {
 		lg.Info(utils.ConstructingBsonErr, err)
 		return "", err
@@ -108,12 +108,12 @@ func (s *Service) GetUserList(comQuery *utils.CommonQuery) (items *utils.RespPag
 
 // PostUser 注册
 // TODO 校验邮箱，电话，密码的格式
-func (s *Service) PostUser(reqPostUser *dto.ReqPostUser) (err error) {
+func (s *Service) PostUser(reqPostUser *dto.ReqPostUser) (id string, err error) {
 	lg := utils.GetDefaultLogger()
 	//1.判空
 	if reqPostUser.Username == "" || reqPostUser.Password == "" {
 		lg.Info(utils.CountOrPasswordNullErr)
-		return errors.New(utils.CountOrPasswordNullErr)
+		return "", errors.New(utils.CountOrPasswordNullErr)
 	}
 	//2.检查用户名是否存在
 	query := bson.M{
@@ -122,7 +122,7 @@ func (s *Service) PostUser(reqPostUser *dto.ReqPostUser) (err error) {
 	daoUser, _ := s.dao.GetOneUser(context.Background(), query)
 	if daoUser != nil {
 		lg.Infof("用户名%s已被注册", reqPostUser.Username)
-		return errors.New(utils.RegisteredErr)
+		return "", errors.New(utils.RegisteredErr)
 	}
 	//3.未被注册，一切正常
 	hashPassword, _ := utils.HashPassword(reqPostUser.Password) //hash加密
@@ -136,12 +136,12 @@ func (s *Service) PostUser(reqPostUser *dto.ReqPostUser) (err error) {
 		Ctime:    time.Now().Unix(),
 		Mtime:    time.Now().Unix(),
 	}
-	_, err = s.dao.CreateUser(context.Background(), daoUser)
+	id, err = s.dao.CreateUser(context.Background(), daoUser)
 	if err != nil {
 		lg.Info(utils.ServerErr, err)
-		return errors.New(utils.ServerErr)
+		return "", errors.New(utils.ServerErr)
 	}
-	return err
+	return id, nil
 }
 
 // UserLogin 登录
