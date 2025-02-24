@@ -81,6 +81,15 @@ func (s *Server) RegisterProblem(g *gin.RouterGroup) {
 	}
 }
 
+// RegisterSubmit 路由器
+func (s *Server) RegisterSubmit(g *gin.RouterGroup) {
+	//操作不拦截
+	userGroup := g.Group("/submit")
+	{
+		userGroup.POST("/", s.Submit)
+	}
+}
+
 func NewServer(lg logrus.FieldLogger, svc *service.Service, opts *CmdOptions, stopCh <-chan struct{}) *Server {
 	app := gin.Default()
 	app.Use(middleware.CorsHandler()) // set cors
@@ -106,6 +115,7 @@ func (s *Server) RegisterRoutes() {
 	s.RegisterUser(v1) //调用middleware的路由组
 	s.RegisterLabel(v1)
 	s.RegisterProblem(v1)
+	s.RegisterSubmit(v1)
 }
 
 func (s *Server) Run() error {

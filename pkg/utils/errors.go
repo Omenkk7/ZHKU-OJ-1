@@ -29,6 +29,8 @@ const (
 	LabelOrAuthorCannotBeNull = "标签名称和出题人不能为空!"
 	LabelIsExist              = "标签已存在！"
 	LabelNotExist             = "标签不存在!"
+
+	CodeCannotBeNull = "代码为空！"
 )
 
 func New(s string) error {

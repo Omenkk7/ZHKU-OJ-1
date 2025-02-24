@@ -20,12 +20,13 @@ type GoJudgeFile struct {
 }
 
 type GoJudgeRunResponse struct {
-	Status     string        `json:"status"`
-	ExitStatus int           `json:"exit_status"`
-	Time       int64         `json:"time"`
-	Memory     int64         `json:"memory"`
-	RunTime    int64         `json:"runTime"`
-	Files      []GoJudgeFile `json:"files"`
+	Status     string `json:"status"`
+	ExitStatus int    `json:"exit_status"`
+	Time       int64  `json:"time"`
+	Memory     int64  `json:"memory"`
+	RunTime    int64  `json:"runTime"`
+
+	Files []GoJudgeFile `json:"files"`
 }
 
 func NewGoJudgeRunResponse() *GoJudgeRunResponse {
