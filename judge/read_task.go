@@ -23,7 +23,7 @@ type Submit struct {
 }
 
 // 用于自动读取任务
-func ReadTask() {
+func ReadTask() (results []Submit) {
 	lg := utils.GetDefaultLogger()
 	lg.Info("读任务......")
 
@@ -43,26 +43,18 @@ func ReadTask() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cursor, err := collection.Find(ctx, bson.D{})
+	cursor, err := collection.Find(ctx, bson.M{"status": utils.WaitForJudge}) //找待判题的数据
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer cursor.Close(ctx)
 
 	// 4. 解码结果
-	var results []Submit
 	if err = cursor.All(ctx, &results); err != nil {
 		log.Fatal(err)
 	}
 
-	// 5. 处理结果
-	lg.Infof("找到了%d条数据\n", len(results))
-	lg.Infof("------------排序前---------------")
-	for _, result := range results {
-		lg.Infof("语言: %s, 代码: %s\n,提交时间：%s\n", result.Language, result.Code, result.Stime)
-	}
-
-	//6.待判题的代码，按时间顺序排序，排好序再进行判题
+	//5.按时间顺序排序
 	for i := 0; i < len(results); i++ {
 		min := results[i].Stime
 		minIndex := i
@@ -76,9 +68,6 @@ func ReadTask() {
 		results[minIndex] = results[i]
 		results[i] = temp
 	}
-
-	lg.Infof("------------排序后---------------")
-	for _, result := range results {
-		lg.Infof("语言: %s, 代码: %s\n,提交时间：%s\n", result.Language, result.Code, result.Stime)
-	}
+	//返回排好序的结果
+	return results
 }
