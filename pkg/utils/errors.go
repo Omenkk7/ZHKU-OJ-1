@@ -31,6 +31,8 @@ const (
 	LabelNotExist             = "标签不存在!"
 
 	CodeCannotBeNull = "代码为空！"
+	WaitForJudge     = 1
+	SuccessJudge     = 2
 )
 
 func New(s string) error {

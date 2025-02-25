@@ -2,7 +2,6 @@ package service
 
 import (
 	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/context"
 	"time"
 	"zhku-oj-server/pkg/app/api-server/dto"
@@ -20,13 +19,13 @@ func (s *Service) Submit(reqSubmit *dto.ReqSubmit) (err error) {
 	}
 	//2.一切正常，构建入库模型
 	dtoSubmit := &models.Submit{
-		ID:        primitive.ObjectID{},
-		Code:      reqSubmit.Code,
-		Language:  reqSubmit.Language,
-		Status:    reqSubmit.Status,
-		ProblemId: reqSubmit.ProblemId,
-		Ctime:     time.Now().Unix(),
-		Mtime:     time.Now().Unix(),
+		Code:       reqSubmit.Code,
+		Language:   reqSubmit.Language,
+		Status:     utils.WaitForJudge,
+		ProblemId:  reqSubmit.ProblemId,
+		UserId:     reqSubmit.UserId,
+		Evaluation: "nil",
+		Stime:      time.Now().Unix(),
 	}
 	//3.入库
 	_, err = s.dao.Submit(context.Background(), dtoSubmit)

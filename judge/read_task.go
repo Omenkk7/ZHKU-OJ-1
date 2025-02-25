@@ -16,10 +16,10 @@ type Submit struct {
 	Code       string             `json:"code,omitempty" bson:"code,omitempty"`
 	Evaluation interface{}        `json:"evaluation,omitempty" bson:"evaluation,omitempty"`
 	Language   string             `json:"language,omitempty" bson:"language,omitempty"`
+	UserId     string             `json:"user_id,omitempty" bson:"user_id,omitempty"`
 	ProblemId  string             `json:"problem_id,omitempty" bson:"problem_id,omitempty"`
 	Status     int32              `json:"status,omitempty" bson:"status,omitempty"`
-	Ctime      int64              `json:"ctime,omitempty" bson:"ctime,omitempty"`
-	Mtime      int64              `json:"mtime,omitempty" bson:"mtime,omitempty"`
+	Stime      int64              `json:"stime,omitempty" bson:"stime,omitempty"`
 }
 
 // 用于自动读取任务
@@ -59,16 +59,16 @@ func ReadTask() {
 	lg.Infof("找到了%d条数据\n", len(results))
 	lg.Infof("------------排序前---------------")
 	for _, result := range results {
-		lg.Infof("语言: %s, 代码: %s\n,提交时间：%s\n", result.Language, result.Code, result.Ctime)
+		lg.Infof("语言: %s, 代码: %s\n,提交时间：%s\n", result.Language, result.Code, result.Stime)
 	}
 
 	//6.待判题的代码，按时间顺序排序，排好序再进行判题
 	for i := 0; i < len(results); i++ {
-		min := results[i].Ctime
+		min := results[i].Stime
 		minIndex := i
 		for j := i; j < len(results); j++ {
-			if min > results[j].Ctime {
-				min = results[j].Ctime
+			if min > results[j].Stime {
+				min = results[j].Stime
 				minIndex = j
 			}
 		}
@@ -79,6 +79,6 @@ func ReadTask() {
 
 	lg.Infof("------------排序后---------------")
 	for _, result := range results {
-		lg.Infof("语言: %s, 代码: %s\n,提交时间：%s\n", result.Language, result.Code, result.Ctime)
+		lg.Infof("语言: %s, 代码: %s\n,提交时间：%s\n", result.Language, result.Code, result.Stime)
 	}
 }

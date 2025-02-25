@@ -24,6 +24,7 @@ func Forbidden(c *gin.Context, err error) {
 func SuccessResponse(c *gin.Context, data ...interface{}) {
 	if len(data) == 0 {
 		c.JSON(http.StatusOK, gin.H{})
+		return //要return，不然data[0]可能会报空指针
 	}
 	c.JSON(http.StatusOK, data[0])
 }
