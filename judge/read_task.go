@@ -22,11 +22,8 @@ type Submit struct {
 	Stime      int64              `json:"stime,omitempty" bson:"stime,omitempty"`
 }
 
-// 用于自动读取任务
-func ReadTask() (results []Submit) {
-	lg := utils.GetDefaultLogger()
-	lg.Info("读任务......")
-
+// ReadTask 用于自动读取任务
+func ReadTask(maxTimeStamp *int64) (results []Submit) {
 	//TODO 直接用原有的Dao报空指针，找了一个多小时都不知道是什么的问题，先直接用原生mongo实现该功能
 
 	// 1. 连接 MongoDB
@@ -43,7 +40,12 @@ func ReadTask() (results []Submit) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	cursor, err := collection.Find(ctx, bson.M{"status": utils.WaitForJudge}) //找待判题的数据
+	//读待判题的，且比上次读的时间戳更大的数据
+	cursor, err := collection.Find(ctx,
+		bson.M{
+			"status": utils.WaitForJudge,
+			"stime":  bson.M{"$gt": *maxTimeStamp},
+		})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -67,6 +69,10 @@ func ReadTask() (results []Submit) {
 		temp := results[minIndex]
 		results[minIndex] = results[i]
 		results[i] = temp
+	}
+	//为了避免重复读取数据，记录上次数据的最大时间戳，并进行判定
+	if len(results) != 0 {
+		*maxTimeStamp = results[len(results)-1].Stime
 	}
 	//返回排好序的结果
 	return results
