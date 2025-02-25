@@ -81,10 +81,18 @@ func runServe(cmd *cobra.Command, args []string) error {
 	opts := server.NewCmdOptions(conf.Config.App.Host, conf.Config.App.Port)
 	s := server.NewServer(lg, svc, opts, stopCh)
 
+	//启动server
 	g.Go(func() error {
 		s.Init()
 		return s.Run()
 	})
+
+	//启动server_judge
+	j := server.NewJudge(utils.LocalJudge)
+	g.Go(func() error {
+		return j.RunJudge()
+	})
+
 	g.Go(func() error {
 		// 监听信号,控制server的退出
 		return waitForSignal(lg, signalCh, stopCh)

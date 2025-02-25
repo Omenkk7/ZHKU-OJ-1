@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"os"
-	"zhku-oj-server/judge"
 )
 
 var rootCmd = &cobra.Command{
@@ -21,8 +20,6 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
-	// 启动独立任务进行判题
-	go judge.StartJudge()
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
