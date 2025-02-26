@@ -1,19 +1,14 @@
 package server
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 	"zhku-oj-server/pkg/app/api-server/service"
+	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 )
 
 type LocalJudge struct {
 	svc *service.Service
-}
-
-type LocalTask struct {
-	ID       primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"` //这个用于记录submit_id
-	BaseTask                    //嵌入
 }
 
 func (lj *LocalJudge) RunJudge() error {
@@ -51,9 +46,9 @@ func (lj *LocalJudge) producer(taskChan chan interface{}) {
 			for _, result := range results {
 				lg.Infof("语言: %s, 代码: %s\n", result.Language, result.Code)
 				//丢进任务管道
-				taskChan <- LocalTask{
+				taskChan <- models.LocalTask{
 					ID: result.ID,
-					BaseTask: BaseTask{
+					BaseTask: models.BaseTask{
 						Language:  result.Language,
 						Code:      result.Code,
 						UserId:    result.UserId,
@@ -70,9 +65,14 @@ func (lj *LocalJudge) consumer(taskChan chan interface{}) {
 	i := 1
 	for {
 		t := <-taskChan
-		task := t.(LocalTask)
+		task := t.(models.LocalTask)
 
 		//TODO 添加合并模板，判题的逻辑
+		c := lj.svc.MergeTemplate(utils.LocalJudge, task)
+		code := c.(string)
+		task.Code = code
+		//假设已经拿到了完整的代码，接下来开启http调用go-oj进行判题
+		lj.svc.InvokeSandbox(task.Language, task.Code)
 
 		lg.Infof("已完成任务%d：语言: %s, 代码: %s\n", i, task.Language, task.Code)
 		time.Sleep(5 * time.Second)
