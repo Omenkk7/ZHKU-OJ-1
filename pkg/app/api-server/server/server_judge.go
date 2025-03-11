@@ -14,7 +14,7 @@ type BaseTask struct {
 
 type Judge struct {
 	svc    *service.Service
-	t      *BaseTask
+	bt     *BaseTask
 	lj     *LocalJudge
 	rj     *RemoteJudge
 	choice int
@@ -29,14 +29,18 @@ func (j Judge) Work() {
 	}
 }
 
-func NewJudge(choice int) *Judge {
-	switch choice {
-	case utils.LocalJudge:
+func NewJudge() *Judge {
+	//通过读取配置文件，决定启动哪个判题
+	cfg, _ := utils.LoadConfig("conf/config.yaml")
+	judgeCfg := cfg.GetJudgeConfig()
+
+	switch judgeCfg.Type {
+	case utils.LocalJudgeCfg:
 		return &Judge{
 			choice: utils.LocalJudge,
 			svc:    service.NewService(),
 		}
-	case utils.RemoteJudge:
+	case utils.RemoteJudgeCfg:
 		return &Judge{
 			choice: utils.RemoteJudge,
 			svc:    service.NewService(),

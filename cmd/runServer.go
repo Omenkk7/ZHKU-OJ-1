@@ -88,7 +88,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	})
 
 	//启动server_judge
-	j := server.NewJudge(utils.LocalJudge)
+	j := server.NewJudge()
 	g.Go(func() error {
 		return j.RunJudge()
 	})

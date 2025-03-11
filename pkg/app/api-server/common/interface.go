@@ -39,10 +39,10 @@ type JudgeInterface interface {
 	RunJudge() error
 	NewJudge() server.Judge
 
-	//TODO 留下work()或producer()+consumer()即可
+	// TODO 留下work()或producer()+consumer()即可
 	Work()
-	Producer(chan Task)
-	Consumer(chan Task)
+	Producer(obj interface{})
+	Consumer(obj interface{})
 }
 type Task interface {
 }
