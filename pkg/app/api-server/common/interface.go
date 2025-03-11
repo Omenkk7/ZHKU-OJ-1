@@ -46,3 +46,6 @@ type JudgeInterface interface {
 }
 type Task interface {
 }
+type JudgeManagerInterface interface {
+	RunJudge()
+}

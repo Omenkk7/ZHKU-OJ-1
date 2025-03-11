@@ -67,11 +67,13 @@ func (lj *LocalJudge) consumer(taskChan chan interface{}) {
 		t := <-taskChan
 		task := t.(models.LocalTask)
 
-		//TODO 添加合并模板，判题的逻辑
-		c := lj.svc.MergeTemplate(utils.LocalJudge, task)
+		//TODO 完善MergeTemplate，InvokeSandbox
+
+		//合并模板，拿到合并后的完整代码
+		c := utils.MergeTemplate(utils.LocalJudge, task)
 		code := c.(string)
 		task.Code = code
-		//假设已经拿到了完整的代码，接下来开启http调用go-oj进行判题
+		//接下来开启http调用go-oj进行判题
 		lj.svc.InvokeSandbox(task.Language, task.Code)
 
 		lg.Infof("已完成任务%d：语言: %s, 代码: %s\n", i, task.Language, task.Code)

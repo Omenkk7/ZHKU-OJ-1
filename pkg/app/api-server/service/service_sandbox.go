@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"zhku-oj-server/pkg/utils"
 
 	"fmt"
 	"io/ioutil"
@@ -50,29 +51,36 @@ type CmdResponse struct {
 }
 
 func (s *Service) InvokeSandbox(language string, code string) {
-	//用于测试
+	//通过读取配置文件的形式，找到调用沙箱的请求方式和url，找到jdk/g++等环境的路径
+	cfg, _ := utils.LoadConfig("conf/config.yaml")
+	judgeCfg := cfg.GetJudgeConfig()
+	sandboxCfg := cfg.GetSandboxConfig()
+
+	//创建请求体
+	var requestBody RequestBody
 	switch language {
 	case "java":
-
-	} // 创建请求数据
-
-	requestBody := RequestBody{
-		Cmd: []Cmd{
-			{
-				Args:        []string{"C:\\Program Files\\Java\\jdk-11.0.1\\bin\\java.exe", "a.java", "UTF-8"},
-				Env:         []string{"PATH=C:\\Program Files\\Java\\jdk-11.0.1\\bin"},
-				Files:       []File{{Content: "1 3"}, {Name: "stdout", Max: 10240000}, {Name: "stderr", Max: 10240000}},
-				CPULimit:    9687500000,
-				MemoryLimit: 10485760000,
-				ProcLimit:   50,
-				CopyIn: map[string]File{
-					"a.java": {
-						Content: "import java.util.Scanner; \n class a {\n   public static void main(String[] args){\n Scanner sc=new Scanner(System.in);\n System.out.print(sc.nextInt()+sc.nextInt());\n }\n \n}",
+		jdk11cfg, _ := judgeCfg.Java["JDK11"]
+		requestBody = RequestBody{
+			Cmd: []Cmd{
+				{
+					Args: []string{jdk11cfg.BaseArgs[0]},
+					Env:  []string{jdk11cfg.Env},
+					//TODO Content怎么用，如何进行判题？
+					Files:       []File{{Content: "1 3"}, {Name: "stdout", Max: 10240000}, {Name: "stderr", Max: 10240000}},
+					CPULimit:    9687500000,
+					MemoryLimit: 10485760000,
+					ProcLimit:   50,
+					CopyIn: map[string]File{
+						"a.java": {
+							Content: code,
+						},
 					},
+					CopyOut: []string{"stdout", "stderr"},
 				},
-				CopyOut: []string{"stdout", "stderr"},
 			},
-		},
+		}
+
 	}
 
 	// 将请求体编码为JSON
@@ -83,7 +91,7 @@ func (s *Service) InvokeSandbox(language string, code string) {
 	}
 
 	// 创建HTTP请求
-	req, err := http.NewRequest("POST", "http://localhost:5050/run", bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest(sandboxCfg.Method, sandboxCfg.Url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		fmt.Println("Error creating request:", err)
 		return
@@ -122,7 +130,4 @@ func (s *Service) InvokeSandbox(language string, code string) {
 	} else {
 		fmt.Println("No response data found")
 	}
-
-	/*fmt.Printf("Response: %+v\n", response)*/
-
 }

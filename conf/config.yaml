@@ -5,4 +5,15 @@ Mongo:
   Uri: mongodb://localhost:27017
   DbName: zkoj
 Judge:
-  type: LocalJudge   #或RemoteJudge
+  Type: LocalJudge
+  Java:
+    JDK11:
+      BaseArgs: "C:\\Program Files\\Java\\jdk-11.0.1\\bin\\java.exe", "a.java","UTF-8"
+      Env: "PATH=C:\\Program Files\\Java\\jdk-11.0.1\\bin"
+    Python:
+      python3.12:
+        BaseArgs: xxx
+        Env: xxx
+Sandbox:
+  Url: "localhost:5050/run"
+  Method: "POST"

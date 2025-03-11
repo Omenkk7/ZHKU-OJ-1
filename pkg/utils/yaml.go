@@ -7,9 +7,10 @@ import (
 
 // Config 结构体表示整个配置文件的结构
 type Config struct {
-	App   AppConfig   `yaml:"App"`
-	Mongo MongoConfig `yaml:"Mongo"`
-	Judge JudgeConfig `yaml:"Judge"`
+	App     AppConfig     `yaml:"App"`
+	Mongo   MongoConfig   `yaml:"Mongo"`
+	Judge   JudgeConfig   `yaml:"Judge"`
+	Sandbox SandboxConfig `yaml:"Sandbox"`
 }
 
 // AppConfig 结构体表示App部分的配置
@@ -26,7 +27,27 @@ type MongoConfig struct {
 
 // JudgeConfig 结构体表示Judge部分的配置
 type JudgeConfig struct {
-	Type string `yaml:"type"`
+	Type   string                  `yaml:"Type"`
+	Java   map[string]JDKConfig    `yaml:"Java"`
+	Python map[string]PythonConfig `yaml:"Python"`
+}
+
+// JDKConfig 结构体表示JDK的配置
+type JDKConfig struct {
+	BaseArgs []string `yaml:"BaseArgs"`
+	Env      string   `yaml:"Env"`
+}
+
+// PythonConfig 结构体表示Python的配置
+type PythonConfig struct {
+	BaseArgs []string `yaml:"BaseArgs"`
+	Env      string   `yaml:"Env"`
+}
+
+// SandboxConfig 结构体表示Sandbox部分的配置
+type SandboxConfig struct {
+	Url    string `yaml:"Url"`
+	Method string `yaml:"Method"`
 }
 
 // LoadConfig 从指定的YAML文件加载配置
@@ -60,4 +81,9 @@ func (c *Config) GetMongoConfig() MongoConfig {
 // GetJudgeConfig 返回Judge部分的配置
 func (c *Config) GetJudgeConfig() JudgeConfig {
 	return c.Judge
+}
+
+// GetSandboxConfig 返回Sandbox部分的配置
+func (c *Config) GetSandboxConfig() SandboxConfig {
+	return c.Sandbox
 }
