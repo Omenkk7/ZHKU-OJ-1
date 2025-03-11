@@ -27,21 +27,14 @@ type MongoConfig struct {
 
 // JudgeConfig 结构体表示Judge部分的配置
 type JudgeConfig struct {
-	Type   string                  `yaml:"Type"`
-	Java   map[string]JDKConfig    `yaml:"Java"`
-	Python map[string]PythonConfig `yaml:"Python"`
+	Type string               `yaml:"Type"`
+	Java map[string]JDKConfig `yaml:"Java"`
 }
 
 // JDKConfig 结构体表示JDK的配置
 type JDKConfig struct {
-	BaseArgs []string `yaml:"BaseArgs"`
-	Env      string   `yaml:"Env"`
-}
-
-// PythonConfig 结构体表示Python的配置
-type PythonConfig struct {
-	BaseArgs []string `yaml:"BaseArgs"`
-	Env      string   `yaml:"Env"`
+	BaseArgs string `yaml:"BaseArgs"`
+	Env      string `yaml:"Env"`
 }
 
 // SandboxConfig 结构体表示Sandbox部分的配置

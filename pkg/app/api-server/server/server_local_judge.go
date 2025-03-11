@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"time"
 	"zhku-oj-server/pkg/app/api-server/service"
 	"zhku-oj-server/pkg/models"
@@ -64,6 +65,10 @@ func (lj *LocalJudge) consumer(taskChan chan interface{}) {
 	lg := utils.GetDefaultLogger()
 	i := 1
 	for {
+		//用于隔开任务日志输出，便于测试观察
+		fmt.Println()
+		fmt.Println()
+
 		t := <-taskChan
 		task := t.(models.LocalTask)
 

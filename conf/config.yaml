@@ -8,12 +8,8 @@ Judge:
   Type: LocalJudge
   Java:
     JDK11:
-      BaseArgs: "C:\\Program Files\\Java\\jdk-11.0.1\\bin\\java.exe", "a.java","UTF-8"
+      BaseArgs: "C:\\Program Files\\Java\\jdk-11.0.1\\bin\\java.exe"
       Env: "PATH=C:\\Program Files\\Java\\jdk-11.0.1\\bin"
-    Python:
-      python3.12:
-        BaseArgs: xxx
-        Env: xxx
 Sandbox:
-  Url: "localhost:5050/run"
+  Url: "http://localhost:5050/run"
   Method: "POST"
