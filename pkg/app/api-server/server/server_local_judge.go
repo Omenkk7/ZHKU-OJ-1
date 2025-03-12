@@ -69,20 +69,22 @@ func (lj *LocalJudge) consumer(taskChan chan interface{}) {
 		fmt.Println()
 		fmt.Println()
 
+		//从阻塞队列中拿出任务
 		t := <-taskChan
 		task := t.(models.LocalTask)
-
-		//TODO 完善InvokeSandbox
 
 		//合并模板，拿到合并后的完整代码
 		c, err := lj.svc.MergeTemplate(task)
 		if err != nil || c == nil {
 			continue
 		}
-		code := c.(string)
-		task.Code = code
+		task.Code = c.(string)
+
+		//TODO 完善InvokeSandbox
 		//接下来开启http调用go-oj进行判题
 		lj.svc.InvokeSandbox(task.Language, task.Code)
+
+		//TODO 判断结果，把结果写回mongo
 
 		lg.Infof("已完成任务%d：语言: %s, 代码: %s\n", i, task.Language, task.Code)
 		time.Sleep(5 * time.Second)
