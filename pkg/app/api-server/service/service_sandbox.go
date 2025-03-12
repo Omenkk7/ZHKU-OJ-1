@@ -201,7 +201,7 @@ func judge(fileId string, language string, example string) (result string) {
 		}
 	}
 	lg.Infoln("Response is empty")
-	return ""
+	return response[0].Files["stderr"]
 }
 
 func invokeSandbox(language string, code string) {
@@ -213,8 +213,8 @@ func invokeSandbox(language string, code string) {
 
 	//TODO 把测试用例丢进去example判题
 	//"1 1"用于测试两数之和，模拟一个测试用例; 可以修改“1 1”进行各种测试
-	result := judge(filedId, language, "1 1")
-	lg.Infoln("结果为：", result)
+	result := judge(filedId, language, "111 123")
+	lg.Infof("结果为：%s", result)
 
 }
 
