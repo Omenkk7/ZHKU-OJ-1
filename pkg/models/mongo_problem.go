@@ -14,6 +14,7 @@ type Problem struct {
 	Labels        []string           `json:"labels,omitempty" bson:"labels,omitempty"`
 	PassNum       int32              `json:"pass_num,omitempty" bson:"pass_num,omitempty"`
 	Title         string             `json:"title,omitempty" bson:"title,omitempty"`
+	Template      string             `json:"template,omitempty" bson:"template,omitempty"`
 	URL           string             `json:"url,omitempty" bson:"url,omitempty"`
 	Ctime         int64              `json:"ctime,omitempty" bson:"ctime,omitempty"`
 	Mtime         int64              `json:"mtime,omitempty" bson:"mtime,omitempty"`

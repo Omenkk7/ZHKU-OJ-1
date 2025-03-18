@@ -10,6 +10,12 @@ package utils
 import "time"
 
 const (
+	LocalJudge     = 0
+	RemoteJudge    = 1
+	ReadTaskTime   = 5
+	LocalJudgeCfg  = "LocalJudge"
+	RemoteJudgeCfg = "RemoteJudge"
+
 	//成功
 	UpdateSuccess   = "更新成功"
 	DeleteSuccess   = "删除成功"
