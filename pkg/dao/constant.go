@@ -21,5 +21,8 @@ const (
 	// mongo field常量
 
 	// mongo collection常量
-	userTable = "users"
+	userTable    = "users"
+	ProblemTable = "problems"
+	SubmitTable  = "submits"
+	labelTable   = "labels"
 )

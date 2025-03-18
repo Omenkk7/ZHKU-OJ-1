@@ -1,16 +1,13 @@
-/*
-@Author: urmsone urmsone@163.com
-@Date: 2025/1/24 11:36
-@Name: response.go
-@Description:
-*/
-
 package utils
 
 import (
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
+
+// Result 统一响应格式
+
+//原utils/response
 
 func BadRequest(c *gin.Context, err error) {
 	FailedResponse(c, http.StatusBadRequest, err)

@@ -9,11 +9,14 @@ package utils
 
 import (
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/crypto/bcrypt"
 	"strconv"
 	"time"
+	"zhku-oj-server/pkg/models"
 )
 
 // Mongo查询相关
@@ -77,28 +80,28 @@ type JsonTime struct {
 	time.Time
 }
 
-func NewJsonTimeWithTimestamp(t int64) JsonTime {
-	return JsonTime{Time: time.Unix(t, 0)}
+func NewJsonTimeWithTimestamp(t int64) *JsonTime {
+	return &JsonTime{Time: time.Unix(t, 0)}
 }
 
-func NewJsonTimeWithTime(t time.Time) JsonTime {
-	return JsonTime{
+func NewJsonTimeWithTime(t time.Time) *JsonTime {
+	return &JsonTime{
 		Time: t,
 	}
 }
 
-func NowJsonTime() JsonTime {
-	return JsonTime{
+func NowJsonTime() *JsonTime {
+	return &JsonTime{
 		Time: time.Now(),
 	}
 }
 
-func (t JsonTime) MarshalJSON() ([]byte, error) {
+func (t *JsonTime) MarshalJSON() ([]byte, error) {
 	var stamp = fmt.Sprintf("\"%s\"", t.Format("2006-01-02 15:04:05"))
 	return []byte(stamp), nil
 }
 
-func (t JsonTime) Value() (driver.Value, error) {
+func (t *JsonTime) Value() (driver.Value, error) {
 	var zeroTime time.Time
 	if t.Time.UnixNano() == zeroTime.UnixNano() {
 		return nil, nil
@@ -115,35 +118,33 @@ func (t *JsonTime) Scan(v interface{}) error {
 	return fmt.Errorf("can not convert %v to timestamp", v)
 }
 
-// Bcrypt 用户密码取hash值保存
-type Bcrypt struct {
-	cost int
+// HashPassword 对密码进行哈希加密
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
+	}
+	return string(bytes), nil
 }
 
-func (b *Bcrypt) Encode(password []byte) ([]byte, error) {
-	return bcrypt.GenerateFromPassword(password, b.cost)
+// CheckPasswordHash 验证密码是否与哈希值匹配
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
 
-func (b *Bcrypt) Match(hashedPassword, password []byte) error {
-	return bcrypt.CompareHashAndPassword(hashedPassword, password)
-}
-
-var Encoder = Bcrypt{
-	cost: bcrypt.DefaultCost,
-}
-
-type Claims struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Role     int    `json:"role"` // 0-> admin; 1-> member
+type JWTClaims struct {
+	ID       primitive.ObjectID `json:"_id"`
+	Username string             `json:"username"`
+	Role     int32              `json:"role"` // 0-> user; 1-> admin
 	jwt.StandardClaims
 }
 
-func GenerateStringToken(id string, username string, role int) (string, error) {
-	claims := Claims{
-		ID:       id,
-		Username: username,
-		Role:     role,
+func GenerateStringToken(user *models.User) (string, error) {
+	claims := JWTClaims{
+		ID:       user.ID,
+		Username: user.Username,
+		Role:     user.Role,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
 			Issuer:    "urmsone",
@@ -154,11 +155,30 @@ func GenerateStringToken(id string, username string, role int) (string, error) {
 	return token, err
 }
 
-func GetJwtTokenFromStringToken(token string) (c *jwt.Token, err error) {
-	c, err = jwt.ParseWithClaims(token, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-		return []byte(JwtTokenSecretKey), nil
+// ParseToken 解析JWT
+func ParseToken(tokenString string, secret string) (*JWTClaims, error) {
+	claims := &JWTClaims{}
+
+	// 解析token
+	_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
 	})
-	return
+
+	if err != nil {
+		var ve *jwt.ValidationError
+		if errors.As(err, &ve) {
+			if ve.Errors&jwt.ValidationErrorMalformed != 0 {
+				return nil, errors.New("token格式错误")
+			} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
+				// 令牌已过期或未生效
+				return nil, errors.New("token已过期或未生效")
+			} else {
+				return nil, errors.New("无法解析token")
+			}
+		}
+	}
+
+	return claims, nil
 }
 
 type ContextUser struct {

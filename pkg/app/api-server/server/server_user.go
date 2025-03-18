@@ -13,110 +13,120 @@ import (
 	"zhku-oj-server/pkg/utils"
 )
 
-func (s *Server) RegisterUser(g *gin.RouterGroup) {
-	userGroup := g.Group("/user")
-	{
-		userGroup.GET("/", s.getSomeUser)
-		userGroup.GET("/:id", s.getOneUser)
-		userGroup.POST("/", s.postUser) // 注册
-		userGroup.PUT("/:id", s.putUser)
-		userGroup.DELETE("/:id", s.deleteUser)
-		userGroup.POST("/login", s.login)
+// PostUser 注册 /user
+func (s *Server) PostUser(c *gin.Context) {
+	//打印日志
+	lg := utils.GetDefaultLogger()
+	lg.Info("注册......")
+	//把参数解析到postUser
+	var postUser *dto.ReqPostUser
+	if err := c.BindJSON(&postUser); err != nil {
+		return
 	}
-}
+	//调用service_user层
 
-func (s *Server) getOneUser(c *gin.Context) {
-	lg := utils.GetDefaultLogger()
-	id := c.Param("id")
-	lg.Println("getUserById", id)
-	utils.SuccessResponse(c, map[string]interface{}{})
-}
-func (s *Server) getSomeUser(c *gin.Context) {
-	lg := utils.GetDefaultLogger()
-	lg.Info("user router get start")
-	query := c.Request.URL.Query()
-	cq := utils.BuildCommonQuery(utils.Query(query))
-	lg.Info("get", cq)
-	resp, err := s.svc.GetUserList(cq)
+	id, err := s.svc.PostUser(postUser)
+	//返回结果
 	if err != nil {
 		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	utils.SuccessResponse(c, resp)
+	utils.SuccessResponse(c, gin.H{"id": id})
 }
 
-func (s *Server) postUser(c *gin.Context) {
+// Login 登录 /login
+func (s *Server) Login(c *gin.Context) {
+	//打印日志
 	lg := utils.GetDefaultLogger()
-	// 1) 获取传输参数，绑定到dtoUser
-	dtoUser := &dto.ReqPostUser{}
-	if err := c.ShouldBind(dtoUser); err != nil {
-		lg.Errorf("postUser: %v", err)
-		utils.BadRequest(c, err)
+	lg.Info("登录......")
+	//把参数解析到结构体loginUser
+	var loginUser *dto.ReqPostLoginUser
+	if err := c.BindJSON(&loginUser); err != nil {
 		return
 	}
-	lg.Info("postUser", dtoUser)
-	// TODO://鉴权，数据粒度的权限检查，也可以抽到一个路由函数中，非侵入式的鉴权
-	// 2）参数校验
-	if err := s.svc.CheckPostUserParams(dtoUser); err != nil {
-		lg.Errorf("postUser: %v", err)
-		utils.BadRequest(c, err)
-		return
-	}
-	// 3）构建mongo入库模型
-	userModel, err := s.svc.BuildPostUser(dtoUser)
+	//调用service_user层
+	res, err := s.svc.UserLogin(loginUser)
+	//返回结果
 	if err != nil {
-		lg.Errorf("postUser: %v", err)
+		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	lg.Infof("builded userModel: %v", userModel)
-
-	// 4）写mongo
-	id, err := s.svc.CreateUser(userModel)
-	if err != nil {
-		lg.Errorf("postUser err: %v", err)
-		utils.SuccessResponse(c, map[string]interface{}{
-			"success": false,
-		})
-		return
-	}
-	// 5）返回
-	utils.SuccessResponse(c, map[string]interface{}{
-		"success": true,
-		"id":      id,
-	})
-	return
+	utils.SuccessResponse(c, res)
 }
 
-func (s *Server) putUser(c *gin.Context) {}
-
-func (s *Server) deleteUser(c *gin.Context) {}
-
-func (s *Server) login(c *gin.Context) {
+// GetOneUser 构造query条件查用户 /:id
+func (s *Server) GetOneUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
-	lg.Info("user router get start")
-	loginUser := &dto.ReqPostLoginUser{}
-
-	if err := c.ShouldBind(loginUser); err != nil {
-		lg.Errorf("loginUser: %v", err)
-		utils.BadRequest(c, err)
+	//把参数解析到结构体user
+	var reqUser *dto.ReqUser
+	if err := c.BindJSON(&reqUser); err != nil {
 		return
 	}
-	lg.Infof("loginUser ReqPostLoginUser: %v", loginUser)
-	// 参数校验
-	if err := s.svc.CheckUserLoginParams(loginUser); err != nil {
-		lg.Errorf("CheckUserLoginParams: %v", err)
-		utils.BadRequest(c, err)
-		return
-	}
-	token, err := s.svc.UserLogin(loginUser)
+	lg.Println("条件查询用户......")
+	//调用service_user层
+	res, err := s.svc.GetOneUser(reqUser)
+	//返回结果
 	if err != nil {
-		lg.Errorf("UserLogin: %v", err)
+		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	utils.SuccessResponse(c, map[string]interface{}{
-		"token": token,
-	})
+	utils.SuccessResponse(c, res)
+}
+
+// GetSomeUser 查一堆用户 /
+func (s *Server) GetSomeUser(c *gin.Context) {
+	lg := utils.GetDefaultLogger()
+	lg.Info("查一堆用户......")
+	query := c.Request.URL.Query()
+	cq := utils.BuildCommonQuery(utils.Query(query))
+	lg.Info("get", cq)
+	//调用service_user层
+	res, err := s.svc.GetUserList(cq)
+	//返回结果
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
+}
+
+// PutUser 通过id改一个用户 /:id
+func (s *Server) PutUser(c *gin.Context) {
+	lg := utils.GetDefaultLogger()
+	lg.Info("通过id改一个用户......")
+
+	//把参数解析到结构体user
+	var reqUser *dto.ReqUser
+	if err := c.BindJSON(&reqUser); err != nil {
+		return
+	}
+	//调用service_user层
+	res, err := s.svc.UpdateUser(reqUser)
+	//返回结果
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
+}
+
+// DeleteUser 通过id删一个用户 /:id
+func (s *Server) DeleteUser(c *gin.Context) {
+	lg := utils.GetDefaultLogger()
+	lg.Info("删用户......")
+	id := c.Param("id")
+	//调用service_user层
+	res, err := s.svc.DeleteUser(id)
+	//返回结果
+	if err != nil {
+		lg.Errorf("getUserList: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
 }

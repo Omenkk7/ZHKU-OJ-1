@@ -7,6 +7,12 @@
 
 package common
 
+import (
+	"context"
+	"go.mongodb.org/mongo-driver/bson"
+	"zhku-oj-server/pkg/utils"
+)
+
 // ServerManagerInterface router管理器接口
 type ServerManagerInterface interface {
 	RunManager()
@@ -16,4 +22,13 @@ type ServerManagerInterface interface {
 type ServerInterface interface {
 	RegisterRoutes()
 	Run() error
+}
+
+// DaoInterface 接口
+type DaoInterface interface {
+	CreateOne(ctx context.Context, tableName string, model interface{}) (id string, err error)
+	GetOne(ctx context.Context, tableName string, model interface{}, query interface{}) (interface{}, error)
+	GetSome(ctx context.Context, tableName string, comQuery *utils.CommonQuery) (items *utils.RespPageQuery, err error)
+	Update(ctx context.Context, tableName string, selector bson.M, update bson.M) (err error)
+	DeleteOne(ctx context.Context, tableName string, selector bson.M) (err error)
 }
