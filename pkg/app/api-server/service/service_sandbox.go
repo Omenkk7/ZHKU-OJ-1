@@ -3,9 +3,15 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/context"
+	"math"
+	"os"
+	"strconv"
+	"strings"
 	"zhku-oj-server/pkg/dao"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
@@ -224,22 +230,88 @@ func getTestExampleUrl(problemId string) (url string) {
 	return daoProblem.URL
 }
 
+// 通过url读取测试用例
+// TODO 目前是读本地txt文件的形式，后续要更改
+func fetchTestCases(filePath string) ([]string, error) {
+	// 打开文件
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("无法打开文件: %v", err)
+	}
+	defer file.Close()
+
+	// 读取文件内容
+	content, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, fmt.Errorf("读取文件失败: %v", err)
+	}
+
+	// 按行分割内容
+	lines := strings.Split(strings.TrimSpace(string(content)), "\n")
+
+	// 验证格式正确性
+	if len(lines)%2 != 0 {
+		return nil, errors.New("测试用例文件格式错误：行数必须为偶数")
+	}
+
+	return lines, nil
+}
+
+// 判断是否相等
+func isEqual(expected, actual string) bool {
+	expectedFloat, err1 := strconv.ParseFloat(expected, 64)
+	actualFloat, err2 := strconv.ParseFloat(actual, 64)
+
+	if err1 != nil || err2 != nil {
+		// 如果无法解析为浮点数，直接进行字符串比较
+		return expected == actual
+	}
+
+	// 设置精度阈值
+	const epsilon = 1e-6
+	return math.Abs(expectedFloat-actualFloat) < epsilon
+}
+
+// 调用Oj
 func invokeSandbox(task *models.LocalTask) {
 	lg := utils.GetDefaultLogger()
 
-	//获取编译后的文件id
+	// 获取编译后的文件ID
 	filedId := getFieldId(task.Language, task.Code)
 	lg.Infoln("文件id：" + filedId)
 
-	//获取测试用例的路径
+	// 获取测试用例URL
 	url := getTestExampleUrl(task.ProblemId)
-	lg.Infof("url:%s", url)
+	lg.Infof("测试用例URL: %s", url)
 
-	//TODO 把测试用例丢进去example判题
-	//"1 1"用于测试两数之和，模拟一个测试用例; 可以修改“1 1”进行各种测试
-	result := judge(filedId, task.Language, "1 23")
-	lg.Infof("结果为：%s", result)
+	// 获取测试用例
+	testCases, err := fetchTestCases(url)
+	if err != nil {
+		lg.Errorf("获取测试用例失败: %v", err)
+		return
+	}
 
+	// 执行判题
+	for i := 0; i < len(testCases); i += 2 {
+		input := strings.TrimSpace(testCases[i])
+		expected := strings.TrimSpace(testCases[i+1])
+
+		// 执行判题
+		actual := judge(filedId, task.Language, input)
+		actual = strings.TrimSpace(actual)
+
+		lg.Infof("测试用例 %d: 输入=%s 预期=%s 实际=%s",
+			i/2+1, input, expected, actual)
+
+		// 结果比对
+		if !isEqual(expected, actual) {
+			lg.Errorf("判题失败！失败用例：输入=%s（预期：%s，实际：%s）",
+				input, expected, actual)
+			return
+		}
+	}
+
+	lg.Info("所有测试用例通过，判题成功！")
 }
 
 func (s *Service) InvokeSandbox(task *models.LocalTask) {
