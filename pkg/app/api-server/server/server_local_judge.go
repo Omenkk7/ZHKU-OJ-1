@@ -73,6 +73,7 @@ func (lj *LocalJudge) consumer(taskChan chan interface{}) {
 		t := <-taskChan
 		task := t.(models.LocalTask)
 
+		//TODO 优化方案：直接传送指针，而不是得到code字符串再赋值
 		//合并模板，拿到合并后的完整代码
 		c, err := lj.svc.MergeTemplate(task)
 		if err != nil || c == nil {
@@ -82,7 +83,7 @@ func (lj *LocalJudge) consumer(taskChan chan interface{}) {
 
 		//TODO 完善InvokeSandbox
 		//接下来开启http调用go-oj进行判题
-		lj.svc.InvokeSandbox(task.Language, task.Code)
+		lj.svc.InvokeSandbox(&task)
 
 		//TODO 判断结果，把结果写回mongo
 

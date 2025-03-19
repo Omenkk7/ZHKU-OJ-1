@@ -3,6 +3,11 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/net/context"
+	"zhku-oj-server/pkg/dao"
+	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 
 	"io/ioutil"
@@ -204,20 +209,39 @@ func judge(fileId string, language string, example string) (result string) {
 	return response[0].Files["stderr"]
 }
 
-func invokeSandbox(language string, code string) {
+func getTestExampleUrl(problemId string) (url string) {
+	lg := utils.GetDefaultLogger()
+	//1.template集合内查模板，problemID——>模板
+	objectID, _ := primitive.ObjectIDFromHex(problemId)
+	query := bson.M{
+		"_id": objectID,
+	}
+	daoProblem, err := dao.NewDao().GetOneProblem(context.Background(), query)
+	if err != nil {
+		lg.Info("find template error:", err)
+		return ""
+	}
+	return daoProblem.URL
+}
+
+func invokeSandbox(task *models.LocalTask) {
 	lg := utils.GetDefaultLogger()
 
 	//获取编译后的文件id
-	filedId := getFieldId(language, code)
+	filedId := getFieldId(task.Language, task.Code)
 	lg.Infoln("文件id：" + filedId)
+
+	//获取测试用例的路径
+	url := getTestExampleUrl(task.ProblemId)
+	lg.Infof("url:%s", url)
 
 	//TODO 把测试用例丢进去example判题
 	//"1 1"用于测试两数之和，模拟一个测试用例; 可以修改“1 1”进行各种测试
-	result := judge(filedId, language, "1 23")
+	result := judge(filedId, task.Language, "1 23")
 	lg.Infof("结果为：%s", result)
 
 }
 
-func (s *Service) InvokeSandbox(language string, code string) {
-	invokeSandbox(language, code)
+func (s *Service) InvokeSandbox(task *models.LocalTask) {
+	invokeSandbox(task)
 }
