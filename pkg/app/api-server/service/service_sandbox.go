@@ -307,11 +307,37 @@ func invokeSandbox(task *models.LocalTask) {
 		if !isEqual(expected, actual) {
 			lg.Errorf("判题失败！失败用例：输入=%s（预期：%s，实际：%s）",
 				input, expected, actual)
+			//把submits的evaluation，改为{input： ，expected:   ,actual:  }表示有测试用例不通过判题
+			evaluation := "input:" + input + ",expected:" + expected + ",actual:" + actual
+			//selector是筛选条件，update是要更新的内容
+			selector := bson.M{
+				"_id": task.ID,
+			}
+			update := bson.M{"$set": bson.M{"status": utils.BadJudge,
+				"evaluation": evaluation,
+			}}
+			_, err = dao.NewDao().UpdateSubmit(context.Background(), selector, update)
+			if err != nil {
+				lg.Info(utils.UpdateErr, err)
+				return
+			}
 			return
 		}
 	}
 
 	lg.Info("所有测试用例通过，判题成功！")
+	//把mongo的submits，status改为utils.SuccessJudge
+	//selector是筛选条件，update是要更新的内容
+	selector := bson.M{
+		"_id": task.ID,
+	}
+	update := bson.M{"$set": bson.M{"status": utils.SuccessJudge}}
+	_, err = dao.NewDao().UpdateSubmit(context.Background(), selector, update)
+	if err != nil {
+		lg.Info(utils.UpdateErr, err)
+		return
+	}
+
 }
 
 func (s *Service) InvokeSandbox(task *models.LocalTask) {

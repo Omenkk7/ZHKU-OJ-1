@@ -33,6 +33,7 @@ const (
 	CodeCannotBeNull = "代码为空！"
 	WaitForJudge     = 1
 	SuccessJudge     = 2
+	BadJudge         = 3
 )
 
 func New(s string) error {
