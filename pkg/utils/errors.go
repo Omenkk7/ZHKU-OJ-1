@@ -30,6 +30,8 @@ const (
 	LabelIsExist              = "标签已存在！"
 	LabelNotExist             = "标签不存在!"
 
+	SubmitNotExist = "提交记录不存在！"
+
 	CodeCannotBeNull = "代码为空！"
 	WaitForJudge     = 1
 	SuccessJudge     = 2
