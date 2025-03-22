@@ -12,7 +12,7 @@ func (s *Service) ReadTask(maxTimeStamp *int64) (results []models.Submit) {
 	//1.条件查询，得到任务列表并返回
 	bson := bson.M{
 		"status": utils.WaitForJudge,
-		"stime":  bson.M{"$gt": *maxTimeStamp},
+		"stime":  bson.M{"$gt": *maxTimeStamp - 1},
 	}
 	results, _ = s.dao.GetTaskList(context.Background(), bson)
 
