@@ -65,4 +65,8 @@ const (
 	JwtTokenHeaderKey        = "X-Auth-Token"
 	RememberEffectiveTime    = time.Hour * time.Duration(24*14)
 	NotRememberEffectiveTime = time.Hour * time.Duration(2)
+
+	ClassTable            = "classes"             // 班级表
+	ClassStudentTable     = "class_students"      // 班级学生关系表
+	ClassJoinRequestTable = "class_join_requests" // 班级加入申请表
 )

@@ -33,8 +33,32 @@ const (
 	CodeCannotBeNull = "代码为空！"
 	WaitForJudge     = 1
 	SuccessJudge     = 2
+
+	// 班级管理相关错误
+	ClassNotExistErr     = "班级不存在"
+	ClassCodeExistErr    = "班级代码已存在"
+	StudentInClassErr    = "学生已在班级中"
+	StudentNotInClassErr = "学生不在班级中"
+	CourseInClassErr     = "课程已在班级中"
+	CourseNotInClassErr  = "课程不在班级中"
+	RequestProcessedErr  = "申请已处理"
+	ClassHasStudentsErr  = "班级中还有学生，无法删除"
+
+	// 班级成员权限相关错误常量
+	NoPermissionErrMsg   = "没有权限执行此操作"
+	MemberExistErrMsg    = "成员已存在"
+	MemberNotExistErrMsg = "成员不存在"
 )
 
 func New(s string) error {
 	return errors.New(s)
 }
+
+// 预创建的错误变量
+var (
+
+	// 班级成员权限相关错误
+	NoPermissionErr   = errors.New(NoPermissionErrMsg)
+	MemberExistErr    = errors.New(MemberExistErrMsg)
+	MemberNotExistErr = errors.New(MemberNotExistErrMsg)
+)

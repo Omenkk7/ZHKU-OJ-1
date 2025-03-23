@@ -1,0 +1,835 @@
+package service
+
+import (
+	"errors"
+	"fmt"
+	"github.com/golang-jwt/jwt"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/net/context"
+	"log"
+	"strconv"
+	"time"
+	"zhku-oj-server/pkg/app/api-server/dto"
+	"zhku-oj-server/pkg/models"
+	"zhku-oj-server/pkg/utils"
+)
+
+// CreateClass 创建班级
+func (s *Service) CreateClass(ctx context.Context, req *dto.CreateClassRequest, creatorID string) (*dto.ClassResponse, error) { // 检查班级代码是否已存在
+	existingClass, err := s.dao.GetClassByCode(ctx, req.ClassCode)
+	if err != nil {
+		return nil, err
+	}
+	if existingClass != nil {
+		return nil, errors.New("班级代码已存在")
+	}
+
+	// 获取创建者信息
+	// 添加日志，输出creatorID的值
+	log.Printf("创建班级的用户ID: %s", creatorID)
+
+	// 如果从上下文中获取不到userId，尝试从JWT中获取
+	if creatorID == "" {
+		// 尝试从上下文中获取完整的JWT声明
+		if claims, ok := ctx.Value("claims").(jwt.MapClaims); ok {
+			log.Printf("从上下文获取到JWT声明: %v", claims)
+
+			// 尝试获取用户ID
+			if id, ok := claims["_id"].(string); ok && id != "" {
+				creatorID = id
+				log.Printf("从JWT声明中获取到用户ID: %s", creatorID)
+			} else if id, ok := claims["id"].(string); ok && id != "" {
+				creatorID = id
+				log.Printf("从JWT声明中获取到用户ID(id字段): %s", creatorID)
+			} else if username, ok := claims["username"].(string); ok && username != "" {
+				// 使用username查询用户
+				log.Printf("从JWT声明中获取到username: %s", username)
+				selector := bson.M{"username": username}
+				creator, err := s.dao.GetOneUser(ctx, selector)
+				if err == nil && creator != nil {
+					creatorID = creator.ID.Hex()
+					log.Printf("通过username查询到用户ID: %s", creatorID)
+				}
+			}
+		}
+
+		// 尝试从上下文中获取username
+		if creatorID == "" {
+			if username, ok := ctx.Value("username").(string); ok && username != "" {
+				log.Printf("从上下文获取到username: %s", username)
+				selector := bson.M{"username": username}
+				creator, err := s.dao.GetOneUser(ctx, selector)
+				if err == nil && creator != nil {
+					creatorID = creator.ID.Hex()
+					log.Printf("通过username查询到用户ID: %s", creatorID)
+				}
+			}
+		}
+	}
+
+	// 如果仍然无法获取有效的creatorID，返回错误
+	if creatorID == "" {
+		return nil, errors.New("无法获取创建者ID，请确保已正确登录")
+	}
+
+	objID, err := primitive.ObjectIDFromHex(creatorID)
+	if err != nil {
+		// 更详细的错误信息
+		return nil, fmt.Errorf("无效的用户ID格式: %s, 错误: %v", creatorID, err)
+	}
+
+	selector := bson.M{
+		"_id": objID,
+	}
+	creator, err := s.dao.GetOneUser(ctx, selector)
+	if err != nil {
+		return nil, err
+	}
+	if creator == nil {
+		return nil, errors.New("创建者不存在")
+	}
+
+	// 创建班级
+	class := &models.Class{
+		ClassCode:    req.ClassCode,
+		Name:         req.Name,
+		Department:   req.Department,
+		Description:  req.Description,
+		Creator:      creatorID,
+		Courses:      req.Courses,
+		StudentCount: 0,
+		Status:       1, // 正常状态
+		// 初始化成员字段，将创建者添加为管理员
+		Members: map[string][]models.ClassMember{
+			"1": {
+				{
+					UserID:   creatorID,
+					UserName: creator.Nickname,
+				},
+			},
+		},
+	}
+
+	// 插入数据库
+	id, err := s.dao.CreateClass(ctx, class)
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取创建后的班级
+	createdClass, err := s.dao.GetClassByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为响应DTO
+	return s.convertClassToResponse(createdClass), nil
+}
+
+// UpdateClass 更新班级
+func (s *Service) UpdateClass(ctx context.Context, classID string, req *dto.UpdateClassRequest) (*dto.ClassResponse, error) {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return nil, err
+	}
+	if class == nil {
+		return nil, errors.New("班级不存在")
+	}
+
+	// 构建更新内容
+	update := bson.M{
+		"$set": bson.M{},
+	}
+
+	// 只更新非空字段
+	setFields := update["$set"].(bson.M)
+	if req.Name != "" {
+		setFields["name"] = req.Name
+	}
+	if req.Department != "" {
+		setFields["department"] = req.Department
+	}
+	if req.Description != "" {
+		setFields["description"] = req.Description
+	}
+
+	// 如果提供了课程信息，则更新课程
+	if req.Courses != nil {
+		setFields["courses"] = req.Courses
+	}
+
+	// 执行更新
+	err = s.dao.UpdateClass(ctx, classID, update)
+	if err != nil {
+		return nil, err
+	}
+
+	// 获取更新后的班级信息
+	updatedClass, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为响应DTO
+	return s.convertClassToResponse(updatedClass), nil
+}
+
+// DeleteClass 删除班级
+func (s *Service) DeleteClass(ctx context.Context, classID string) error {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return err
+	}
+	if class == nil {
+		return errors.New("班级不存在")
+	}
+
+	// 检查班级是否有学生
+	if class.StudentCount > 0 {
+		return errors.New("班级中还有学生，无法删除")
+	}
+
+	// 执行删除
+	return s.dao.DeleteClass(ctx, classID)
+}
+
+// ArchiveClass 归档班级
+func (s *Service) ArchiveClass(ctx context.Context, classID string) error {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return err
+	}
+	if class == nil {
+		return errors.New("班级不存在")
+	}
+
+	// 执行归档
+	return s.dao.ArchiveClass(ctx, classID)
+}
+
+// GetClassByID 根据ID获取班级
+func (s *Service) GetClassByID(ctx context.Context, classID string) (*dto.ClassResponse, error) {
+	// 获取班级信息
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return nil, err
+	}
+	if class == nil {
+		return nil, errors.New("班级不存在")
+	}
+
+	// 转换为响应DTO
+	return s.convertClassToResponse(class), nil
+}
+
+// GetClassByCode 根据班级代码获取班级
+func (s *Service) GetClassByCode(ctx context.Context, classCode string) (*dto.ClassResponse, error) {
+	// 获取班级信息
+	class, err := s.dao.GetClassByCode(ctx, classCode)
+	if err != nil {
+		return nil, err
+	}
+	if class == nil {
+		return nil, errors.New("班级不存在")
+	}
+
+	// 转换为响应DTO
+	return s.convertClassToResponse(class), nil
+}
+
+// AddStudentToClass 添加学生到班级
+func (s *Service) AddStudentToClass(ctx context.Context, classID string, req *dto.AddStudentRequest) (*dto.ClassStudentResponse, error) {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return nil, err
+	}
+	if class == nil {
+		return nil, errors.New("班级不存在")
+	}
+
+	// 检查学生是否已在班级中
+	inClass, err := s.dao.CheckStudentInClass(ctx, classID, req.StudentID)
+	if err != nil {
+		return nil, err
+	}
+	if inClass {
+		return nil, errors.New("学生已在班级中")
+	}
+
+	// 添加学生到班级
+	classStudent := &models.ClassStudent{
+		ClassID:       classID,
+		StudentID:     req.StudentID,
+		StudentName:   req.StudentName,
+		StudentNumber: req.StudentNumber,
+		JoinType:      req.JoinType,
+		Status:        1, // 正常状态
+		JoinTime:      time.Now().Unix(),
+		LeaveTime:     nil,
+	}
+
+	id, err := s.dao.AddStudentToClass(ctx, classStudent)
+	if err != nil {
+		return nil, err
+	}
+
+	// 更新班级学生数量
+	err = s.dao.UpdateClassStudentCount(ctx, classID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为响应DTO
+	return &dto.ClassStudentResponse{
+		ID:            id,
+		ClassID:       classStudent.ClassID,
+		StudentID:     classStudent.StudentID,
+		StudentName:   classStudent.StudentName,
+		StudentNumber: classStudent.StudentNumber,
+		JoinType:      classStudent.JoinType,
+		Status:        classStudent.Status,
+		JoinTime:      classStudent.JoinTime,
+		LeaveTime:     classStudent.LeaveTime,
+		CreateTime:    classStudent.Ctime,
+		UpdateTime:    classStudent.Mtime,
+	}, nil
+}
+
+// BatchAddStudentsToClass 批量添加学生到班级
+func (s *Service) BatchAddStudentsToClass(ctx context.Context, classID string, req *dto.BatchAddStudentsRequest) error {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return err
+	}
+	if class == nil {
+		return errors.New("班级不存在")
+	}
+
+	// 准备批量添加的学生数据
+	classStudents := make([]models.ClassStudent, 0, len(req.Students))
+	now := time.Now().Unix()
+
+	for _, student := range req.Students {
+		// 检查学生是否已在班级中
+		inClass, err := s.dao.CheckStudentInClass(ctx, classID, student.StudentID)
+		if err != nil {
+			return err
+		}
+		if inClass {
+			continue // 跳过已在班级中的学生
+		}
+
+		classStudents = append(classStudents, models.ClassStudent{
+			ClassID:       classID,
+			StudentID:     student.StudentID,
+			StudentName:   student.StudentName,
+			StudentNumber: student.StudentNumber,
+			JoinType:      student.JoinType,
+			Status:        1, // 正常状态
+			JoinTime:      now,
+			LeaveTime:     nil,
+			Ctime:         now,
+			Mtime:         now,
+		})
+	}
+
+	// 如果没有需要添加的学生，直接返回
+	if len(classStudents) == 0 {
+		return nil
+	}
+
+	// 批量添加学生
+	err = s.dao.BatchAddStudentsToClass(ctx, classStudents)
+	if err != nil {
+		return err
+	}
+
+	// 更新班级学生数量
+	return s.dao.UpdateClassStudentCount(ctx, classID)
+}
+
+// RemoveStudentFromClass 从班级移除学生
+func (s *Service) RemoveStudentFromClass(ctx context.Context, classID, studentID string) error {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return err
+	}
+	if class == nil {
+		return errors.New("班级不存在")
+	}
+
+	// 检查学生是否在班级中
+	inClass, err := s.dao.CheckStudentInClass(ctx, classID, studentID)
+	if err != nil {
+		return err
+	}
+	if !inClass {
+		return errors.New("学生不在班级中")
+	}
+
+	// 移除学生
+	err = s.dao.RemoveStudentFromClass(ctx, classID, studentID)
+	if err != nil {
+		return err
+	}
+
+	// 更新班级学生数量
+	return s.dao.UpdateClassStudentCount(ctx, classID)
+}
+
+// GetClassStudents 获取班级学生列表
+func (s *Service) GetClassStudents(ctx context.Context, classID string, page, pageSize int, filters map[string]interface{}, sorts map[string]interface{}) (*utils.RespPageQuery, error) {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return nil, err
+	}
+	if class == nil {
+		return nil, errors.New("班级不存在")
+	}
+
+	comQuery := utils.BuildQueryParamsFromValues(page, pageSize, filters, sorts)
+
+	// 执行查询
+	return s.dao.GetClassStudents(ctx, classID, comQuery)
+}
+
+// CreateJoinRequest 创建加入班级申请
+func (s *Service) CreateJoinRequest(ctx context.Context, req *dto.JoinClassRequest) (*dto.JoinRequestResponse, error) {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByCode(ctx, req.ClassCode)
+	if err != nil {
+		return nil, err
+	}
+	if class == nil {
+		return nil, errors.New("班级不存在")
+	}
+
+	// 检查学生是否已在班级中
+	inClass, err := s.dao.CheckStudentInClass(ctx, class.ID.Hex(), req.StudentID)
+	if err != nil {
+		return nil, err
+	}
+	if inClass {
+		return nil, errors.New("学生已在班级中")
+	}
+
+	// 创建加入申请
+	joinRequest := &models.ClassJoinRequest{
+		ClassID:       class.ID.Hex(),
+		StudentID:     req.StudentID,
+		StudentName:   req.StudentName,
+		StudentNumber: req.StudentNumber,
+		RequestMsg:    req.RequestMsg,
+		Status:        0, // 待审核
+		ReviewerID:    "",
+		ReviewMsg:     "",
+		ReviewTime:    nil,
+	}
+
+	id, err := s.dao.CreateJoinRequest(ctx, joinRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为响应DTO
+	return &dto.JoinRequestResponse{
+		ID:            id,
+		ClassID:       joinRequest.ClassID,
+		StudentID:     joinRequest.StudentID,
+		StudentName:   joinRequest.StudentName,
+		StudentNumber: joinRequest.StudentNumber,
+		RequestMsg:    joinRequest.RequestMsg,
+		Status:        joinRequest.Status,
+		ReviewerID:    joinRequest.ReviewerID,
+		ReviewMsg:     joinRequest.ReviewMsg,
+		ReviewTime:    joinRequest.ReviewTime,
+		CreateTime:    joinRequest.Ctime,
+		UpdateTime:    joinRequest.Mtime,
+	}, nil
+}
+
+// ReviewJoinRequest 审核加入班级申请
+func (s *Service) ReviewJoinRequest(ctx context.Context, requestID string, req *dto.ReviewJoinRequest, reviewerID string) (*dto.JoinRequestResponse, error) {
+	// 获取申请信息
+	joinRequest, err := s.dao.GetJoinRequestByID(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+	if joinRequest == nil {
+		return nil, errors.New("申请不存在")
+	}
+
+	// 检查申请状态
+	if joinRequest.Status != 0 {
+		return nil, errors.New("申请已处理")
+	}
+
+	// 更新申请状态
+	now := time.Now().Unix()
+	update := bson.M{
+		"$set": bson.M{
+			"status":      req.Status,
+			"reviewer_id": reviewerID,
+			"review_msg":  req.ReviewMsg,
+			"review_time": now,
+		},
+	}
+
+	err = s.dao.UpdateJoinRequest(ctx, requestID, update)
+	if err != nil {
+		return nil, err
+	}
+
+	// 如果审核通过，添加学生到班级
+	if req.Status == 1 {
+		classStudent := &models.ClassStudent{
+			ClassID:       joinRequest.ClassID,
+			StudentID:     joinRequest.StudentID,
+			StudentName:   joinRequest.StudentName,
+			StudentNumber: joinRequest.StudentNumber,
+			JoinType:      2, // 自主申请
+			Status:        1, // 正常状态
+			JoinTime:      now,
+			LeaveTime:     nil,
+		}
+
+		_, err = s.dao.AddStudentToClass(ctx, classStudent)
+		if err != nil {
+			return nil, err
+		}
+
+		// 更新班级学生数量
+		err = s.dao.UpdateClassStudentCount(ctx, joinRequest.ClassID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 获取更新后的申请信息
+	updatedRequest, err := s.dao.GetJoinRequestByID(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 转换为响应DTO
+	return &dto.JoinRequestResponse{
+		ID:            updatedRequest.ID.Hex(),
+		ClassID:       updatedRequest.ClassID,
+		StudentID:     updatedRequest.StudentID,
+		StudentName:   updatedRequest.StudentName,
+		StudentNumber: updatedRequest.StudentNumber,
+		RequestMsg:    updatedRequest.RequestMsg,
+		Status:        updatedRequest.Status,
+		ReviewerID:    updatedRequest.ReviewerID,
+		ReviewMsg:     updatedRequest.ReviewMsg,
+		ReviewTime:    updatedRequest.ReviewTime,
+		CreateTime:    updatedRequest.Ctime,
+		UpdateTime:    updatedRequest.Mtime,
+	}, nil
+}
+
+// GetJoinRequestList 获取加入申请列表
+func (s *Service) GetClassList(ctx context.Context, page, pageSize int, filters map[string]interface{}, sorts map[string]interface{}) (*utils.RespPageQuery, error) {
+	comQuery := utils.BuildQueryParamsFromValues(page, pageSize, filters, sorts)
+
+	// 执行查询
+	return s.dao.GetClassList(ctx, comQuery)
+}
+
+// GetStudentClasses 获取学生所在的班级列表
+func (s *Service) GetStudentClasses(ctx context.Context, studentID string, page, pageSize int, filters map[string]interface{}, sorts map[string]interface{}) (*utils.RespPageQuery, error) {
+	comQuery := utils.BuildQueryParamsFromValues(page, pageSize, filters, sorts)
+
+	// 执行查询
+	return s.dao.GetClassesByStudentID(ctx, studentID, comQuery)
+}
+
+// AddCourseToClass 添加课程到班级
+func (s *Service) AddCourseToClass(ctx context.Context, classID string, req *dto.AddCourseRequest) error {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return err
+	}
+	if class == nil {
+		return errors.New("班级不存在")
+	}
+
+	// 检查课程是否已在班级中
+	for _, course := range class.Courses {
+		if course.CourseID == req.CourseID {
+			return errors.New("课程已在班级中")
+		}
+	}
+
+	// 添加课程
+	courseInfo := models.CourseInfo{
+		CourseID:   req.CourseID,
+		CourseName: req.CourseName,
+		BindTime:   time.Now().Unix(),
+		Status:     req.Status,
+	}
+
+	return s.dao.AddCoursesToClass(ctx, classID, []models.CourseInfo{courseInfo})
+}
+
+// RemoveCourseFromClass 从班级移除课程
+func (s *Service) RemoveCourseFromClass(ctx context.Context, classID, courseID string) error {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return err
+	}
+	if class == nil {
+		return errors.New("班级不存在")
+	}
+
+	// 检查课程是否在班级中
+	courseExists := false
+	for _, course := range class.Courses {
+		if course.CourseID == courseID {
+			courseExists = true
+			break
+		}
+	}
+
+	if !courseExists {
+		return errors.New("课程不在班级中")
+	}
+
+	// 移除课程
+	return s.dao.RemoveCourseFromClass(ctx, classID, courseID)
+}
+
+// UpdateCourseStatusInClass 更新班级中课程的状态
+func (s *Service) UpdateCourseStatusInClass(ctx context.Context, classID, courseID string, req *dto.UpdateCourseStatusRequest) error {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return err
+	}
+	if class == nil {
+		return errors.New("班级不存在")
+	}
+
+	// 检查课程是否在班级中
+	courseExists := false
+	for _, course := range class.Courses {
+		if course.CourseID == courseID {
+			courseExists = true
+			break
+		}
+	}
+
+	if !courseExists {
+		return errors.New("课程不在班级中")
+	}
+
+	// 更新课程状态
+	return s.dao.UpdateCourseStatusInClass(ctx, classID, courseID, req.Status)
+}
+
+// GetClassesByCourseID 获取绑定了指定课程的班级列表
+func (s *Service) GetClassesByCourseID(ctx context.Context, courseID string, page, pageSize int, filters map[string]interface{}, sorts map[string]interface{}) (*utils.RespPageQuery, error) {
+	comQuery := utils.BuildQueryParamsFromValues(page, pageSize, filters, sorts)
+
+	// 执行查询
+	return s.dao.GetClassesByCourseID(ctx, courseID, comQuery)
+}
+
+// 辅助方法：将Class模型转换为ClassResponse
+func (s *Service) convertClassToResponse(class *models.Class) *dto.ClassResponse {
+	if class == nil {
+		return nil
+	}
+
+	// 转换成员信息
+	members := make(map[string][]dto.ClassMemberResponse)
+	for role, roleMembers := range class.Members {
+		memberResponses := make([]dto.ClassMemberResponse, 0, len(roleMembers))
+		for _, member := range roleMembers {
+			memberResponses = append(memberResponses, dto.ClassMemberResponse{
+				UserID:   member.UserID,
+				UserName: member.UserName,
+			})
+		}
+		members[role] = memberResponses
+	}
+
+	return &dto.ClassResponse{
+		ID:           class.ID.Hex(),
+		ClassCode:    class.ClassCode,
+		Name:         class.Name,
+		Department:   class.Department,
+		Description:  class.Description,
+		Creator:      class.Creator,
+		Courses:      class.Courses,
+		Members:      members, // 添加成员信息
+		StudentCount: class.StudentCount,
+		Status:       class.Status,
+		CreateTime:   class.Ctime,
+		UpdateTime:   class.Mtime,
+	}
+}
+
+// AddClassMember 添加班级成员
+func (s *Service) AddClassMember(ctx context.Context, classID string, req *dto.AddClassMemberRequest) error {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return err
+	}
+	if class == nil {
+		return errors.New("班级不存在")
+	}
+
+	// 创建班级成员
+	member := models.ClassMember{
+		UserID:   req.UserID,
+		UserName: req.UserName,
+	}
+
+	// 添加班级成员
+	return s.dao.AddClassMember(ctx, classID, member, req.Role)
+}
+
+// RemoveClassMember 移除班级成员
+func (s *Service) RemoveClassMember(ctx context.Context, classID string, req *dto.RemoveClassMemberRequest) error {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return err
+	}
+	if class == nil {
+		return errors.New("班级不存在")
+	}
+
+	// 移除班级成员
+	return s.dao.RemoveClassMember(ctx, classID, req.UserID, req.Role)
+}
+
+// GetClassMembers 获取班级成员列表
+func (s *Service) GetClassMembers(ctx context.Context, classID string) (*dto.ClassMembersResponse, error) {
+	// 检查班级是否存在
+	class, err := s.dao.GetClassByID(ctx, classID)
+	if err != nil {
+		return nil, err
+	}
+	if class == nil {
+		return nil, errors.New("班级不存在")
+	}
+
+	// 构建响应
+	resp := &dto.ClassMembersResponse{
+		Admins:     make([]dto.ClassMemberResponse, 0),
+		Teachers:   make([]dto.ClassMemberResponse, 0),
+		Assistants: make([]dto.ClassMemberResponse, 0),
+	}
+
+	// 添加创建者为管理员
+	if class.Creator != "" {
+		// 获取创建者信息
+		objID, err := primitive.ObjectIDFromHex(class.Creator)
+		if err == nil {
+			selector := bson.M{
+				"_id": objID,
+			}
+			user, err := s.dao.GetOneUser(ctx, selector)
+			if err == nil && user != nil {
+				resp.Admins = append(resp.Admins, dto.ClassMemberResponse{
+					UserID:   class.Creator, // 直接使用 class.Creator 作为 UserID
+					UserName: user.Nickname,
+				})
+			}
+		}
+	}
+
+	// 添加其他成员
+	for roleStr, members := range class.Members {
+		role, _ := strconv.Atoi(roleStr)
+		for _, member := range members {
+			memberResp := dto.ClassMemberResponse{
+				UserID:   member.UserID,
+				UserName: member.UserName,
+			}
+
+			switch role {
+			case 1: // 管理员
+				// 避免重复添加创建者
+				if member.UserID != class.Creator {
+					resp.Admins = append(resp.Admins, memberResp)
+				}
+			case 2: // 教师
+				resp.Teachers = append(resp.Teachers, memberResp)
+			case 3: // 助教
+				resp.Assistants = append(resp.Assistants, memberResp)
+			}
+		}
+	}
+
+	return resp, nil
+}
+
+// CheckUserClassPermission 检查用户是否有班级操作权限
+func (s *Service) CheckUserClassPermission(ctx context.Context, classID string, userID string, requiredRoles []int) (bool, error) {
+	// 获取用户在班级中的角色
+	roles, err := s.dao.CheckUserClassRole(ctx, classID, userID)
+	if err != nil {
+		return false, err
+	}
+
+	// 检查用户是否有所需角色
+	for _, role := range roles {
+		for _, requiredRole := range requiredRoles {
+			if role == requiredRole {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
+}
+
+// GetJoinRequestByID 根据ID获取加入申请
+func (s *Service) GetJoinRequestByID(ctx context.Context, requestID string) (*dto.JoinRequestResponse, error) {
+	// 获取申请信息
+	joinRequest, err := s.dao.GetJoinRequestByID(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+	if joinRequest == nil {
+		return nil, errors.New("申请不存在")
+	}
+
+	// 转换为响应DTO
+	return &dto.JoinRequestResponse{
+		ID:            joinRequest.ID.Hex(),
+		ClassID:       joinRequest.ClassID,
+		StudentID:     joinRequest.StudentID,
+		StudentName:   joinRequest.StudentName,
+		StudentNumber: joinRequest.StudentNumber,
+		RequestMsg:    joinRequest.RequestMsg,
+		Status:        joinRequest.Status,
+		ReviewerID:    joinRequest.ReviewerID,
+		ReviewMsg:     joinRequest.ReviewMsg,
+		ReviewTime:    joinRequest.ReviewTime,
+		CreateTime:    joinRequest.Ctime,
+		UpdateTime:    joinRequest.Mtime,
+	}, nil
+}
+
+// GetJoinRequestList 获取加入申请列表
+func (s *Service) GetJoinRequestList(ctx context.Context, page, pageSize int, filters map[string]interface{}, sorts map[string]interface{}) (*utils.RespPageQuery, error) {
+	comQuery := utils.BuildQueryParamsFromValues(page, pageSize, filters, sorts)
+
+	// 执行查询
+	return s.dao.GetJoinRequestList(ctx, comQuery)
+}

@@ -90,6 +90,45 @@ func (s *Server) RegisterSubmit(g *gin.RouterGroup) {
 	}
 }
 
+func (s *Server) RegisterClass(g *gin.RouterGroup) {
+	classGroup := g.Group("/class")
+	{
+		// 班级管理
+		classGroup.POST("", middleware.JWTMiddleware(), s.createClass)
+		classGroup.PUT("/:id", middleware.JWTMiddleware(), s.updateClass)
+		classGroup.DELETE("/:id", middleware.JWTMiddleware(), s.deleteClass)
+		classGroup.PUT("/:id/archive", middleware.JWTMiddleware(), s.archiveClass)
+		classGroup.GET("/:id", middleware.JWTMiddleware(), s.getClassByID)
+		classGroup.GET("/code/:code", middleware.JWTMiddleware(), s.getClassByCode)
+		classGroup.GET("", middleware.JWTMiddleware(), s.getClassList)
+
+		// 班级学生管理
+		classGroup.POST("/:id/student", middleware.JWTMiddleware(), s.addStudentToClass)
+		classGroup.POST("/:id/students", middleware.JWTMiddleware(), s.batchAddStudentsToClass)
+		classGroup.DELETE("/:id/student/:studentId", middleware.JWTMiddleware(), s.removeStudentFromClass)
+		classGroup.GET("/:id/students", middleware.JWTMiddleware(), s.getClassStudents)
+
+		// 班级课程管理
+		classGroup.POST("/:id/course", middleware.JWTMiddleware(), s.addCourseToClass)
+		classGroup.DELETE("/:id/course/:courseId", middleware.JWTMiddleware(), s.removeCourseFromClass)
+		classGroup.PUT("/:id/course/:courseId/status", middleware.JWTMiddleware(), s.updateCourseStatusInClass)
+		classGroup.GET("/course/:courseId", middleware.JWTMiddleware(), s.getClassesByCourseID)
+
+		// 加入申请管理
+		classGroup.POST("/join", middleware.JWTMiddleware(), s.createJoinRequest)
+		classGroup.PUT("/join/:id/review", middleware.JWTMiddleware(), s.reviewJoinRequest)
+		classGroup.GET("/join", middleware.JWTMiddleware(), s.getJoinRequestList)
+
+		// 学生班级查询
+		classGroup.GET("/student/:studentId", middleware.JWTMiddleware(), s.getStudentClasses)
+
+		// 班级成员管理
+		classGroup.GET("/:id/members", middleware.JWTMiddleware(), s.getClassMembers)
+		classGroup.POST("/:id/members", middleware.JWTMiddleware(), s.addClassMember)
+		classGroup.DELETE("/:id/members", middleware.JWTMiddleware(), s.removeClassMember)
+	}
+}
+
 func NewServer(lg logrus.FieldLogger, svc *service.Service, opts *CmdOptions, stopCh <-chan struct{}) *Server {
 	app := gin.Default()
 	app.Use(middleware.CorsHandler()) // set cors
@@ -116,6 +155,7 @@ func (s *Server) RegisterRoutes() {
 	s.RegisterLabel(v1)
 	s.RegisterProblem(v1)
 	s.RegisterSubmit(v1)
+	s.RegisterClass(v1)
 }
 
 func (s *Server) Run() error {

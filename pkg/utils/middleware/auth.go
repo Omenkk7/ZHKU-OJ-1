@@ -41,10 +41,10 @@ func JWTMiddleware() gin.HandlerFunc {
 		lg.Info("拦截请求......")
 
 		// TODO:// 配置白名单和黑名单
-		//if withInWhiteList(c.Request.URL, c.Request.Method) {
-		//	c.Next()
-		//	return
-		//}
+		if withInWhiteList(c.Request.URL, c.Request.Method) {
+			c.Next()
+			return
+		}
 
 		// 从请求头中获取token
 		token := c.Request.Header.Get("Authorization") //TODO 这个key好像是前端设置的，每次请求都自动携带
@@ -86,6 +86,8 @@ func JWTMiddleware() gin.HandlerFunc {
 			Role:     int(jwtClaims.Role),
 		}
 		c.Set("contextUser", contextUser)
+		// 为了兼容性，也可以同时设置userId
+		c.Set("userId", jwtClaims.ID.Hex())
 		c.Next()
 	}
 }
