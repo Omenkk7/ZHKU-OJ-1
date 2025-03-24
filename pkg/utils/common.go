@@ -196,26 +196,39 @@ func BuildQueryParamsFromValues(page, pageSize int, filters, sorts map[string]in
 		Filters:  make(map[string]any),
 	}
 
-	// 添加过滤条件
 	if filters != nil {
 		for k, v := range filters {
 			comQuery.Filters[k] = v
 		}
 	}
 
-	// 添加排序条件
-	if sorts != nil {
-		// 使用 Sort 和 Direction 替代 Sorts
+	if sorts != nil && len(sorts) > 0 {
 		for k, v := range sorts {
 			comQuery.Sort = k
-			// 假设 v 是 1(升序)或 -1(降序)
-			if v.(int) == -1 {
-				comQuery.Direction = -1
-			} else {
+
+			// 处理排序方向，支持多种类型
+			switch val := v.(type) {
+			case int:
+				if val == -1 {
+					comQuery.Direction = -1
+				} else {
+					comQuery.Direction = 1
+				}
+			case string:
+				if val == "desc" {
+					comQuery.Direction = -1
+				} else {
+					comQuery.Direction = 1
+				}
+			default:
 				comQuery.Direction = 1
 			}
-			break // 只取第一个排序条件
+
+			break
 		}
+	} else {
+		comQuery.Sort = DefaultSort
+		comQuery.Direction = DefaultDirection
 	}
 
 	return comQuery

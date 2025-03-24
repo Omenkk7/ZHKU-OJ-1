@@ -54,6 +54,7 @@ const (
 	DefaultSort      = "_id"
 	Sort             = "_sort"
 	Desc             = "desc"
+	Asc              = "asc"
 	Descending       = -1
 	Ascending        = 1
 	DefaultDirection = Ascending
@@ -69,4 +70,19 @@ const (
 	ClassTable            = "classes"             // 班级表
 	ClassStudentTable     = "class_students"      // 班级学生关系表
 	ClassJoinRequestTable = "class_join_requests" // 班级加入申请表
+
+	CourseTable            = "courses"              // 课程表
+	CourseJoinRequestTable = "course_join_requests" // 课程加入申请表
+
+	CourseRoleAdmin     = 1 // 管理员
+	CourseRoleTeacher   = 2 // 教师
+	CourseRoleAssistant = 3 // 助教
+	CourseRoleStudent   = 4 // 学生
+
+	CourseStatusOpen   = 1 // 开放
+	CourseStatusClosed = 0 // 已结课
+
+	CourseJoinStatusPending  = 0 // 待审核
+	CourseJoinStatusApproved = 1 // 已通过
+	CourseJoinStatusRejected = 2 // 已拒绝
 )
