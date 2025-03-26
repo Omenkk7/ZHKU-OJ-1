@@ -85,4 +85,7 @@ const (
 	CourseJoinStatusPending  = 0 // 待审核
 	CourseJoinStatusApproved = 1 // 已通过
 	CourseJoinStatusRejected = 2 // 已拒绝
+
+	AssignmentTable = "assignments" // 作业表
+
 )

@@ -91,65 +91,89 @@ func (s *Server) RegisterSubmit(g *gin.RouterGroup) {
 }
 
 func (s *Server) RegisterClass(g *gin.RouterGroup) {
-	classGroup := g.Group("/class")
+	classGroup := g.Group("/class").Use(middleware.JWTMiddleware())
 	{
 		// 班级管理
-		classGroup.POST("", middleware.JWTMiddleware(), s.createClass)
-		classGroup.PUT("/:id", middleware.JWTMiddleware(), s.updateClass)
-		classGroup.DELETE("/:id", middleware.JWTMiddleware(), s.deleteClass)
-		classGroup.PUT("/:id/archive", middleware.JWTMiddleware(), s.archiveClass)
-		classGroup.GET("/:id", middleware.JWTMiddleware(), s.getClassByID)
-		classGroup.GET("/code/:code", middleware.JWTMiddleware(), s.getClassByCode)
-		classGroup.GET("", middleware.JWTMiddleware(), s.getClassList)
+		classGroup.POST("", s.createClass)
+		classGroup.PUT("/:id", s.updateClass)
+		classGroup.DELETE("/:id", s.deleteClass)
+		classGroup.PUT("/:id/archive", s.archiveClass)
+		classGroup.GET("/:id", s.getClassByID)
+		classGroup.GET("/code/:code", s.getClassByCode)
+		classGroup.GET("", s.getClassList)
 
 		// 班级学生管理
-		classGroup.POST("/:id/student", middleware.JWTMiddleware(), s.addStudentToClass)
-		classGroup.POST("/:id/students", middleware.JWTMiddleware(), s.batchAddStudentsToClass)
-		classGroup.DELETE("/:id/student/:studentId", middleware.JWTMiddleware(), s.removeStudentFromClass)
-		classGroup.GET("/:id/students", middleware.JWTMiddleware(), s.getClassStudents)
+		classGroup.POST("/:id/student", s.addStudentToClass)
+		classGroup.POST("/:id/students", s.batchAddStudentsToClass)
+		classGroup.DELETE("/:id/student/:studentId", s.removeStudentFromClass)
+		classGroup.GET("/:id/students", s.getClassStudents)
 
 		// 班级课程管理
-		classGroup.POST("/:id/course", middleware.JWTMiddleware(), s.addCourseToClass)
-		classGroup.DELETE("/:id/course/:courseId", middleware.JWTMiddleware(), s.removeCourseFromClass)
-		classGroup.PUT("/:id/course/:courseId/status", middleware.JWTMiddleware(), s.updateCourseStatusInClass)
-		classGroup.GET("/course/:courseId", middleware.JWTMiddleware(), s.getClassesByCourseID)
+		classGroup.POST("/:id/course", s.addCourseToClass)
+		classGroup.DELETE("/:id/course/:courseId", s.removeCourseFromClass)
+		classGroup.PUT("/:id/course/:courseId/status", s.updateCourseStatusInClass)
+		classGroup.GET("/course/:courseId", s.getClassesByCourseID)
 
 		// 加入申请管理
-		classGroup.POST("/join", middleware.JWTMiddleware(), s.createJoinRequest)
-		classGroup.PUT("/join/:id/review", middleware.JWTMiddleware(), s.reviewJoinRequest)
-		classGroup.GET("/join", middleware.JWTMiddleware(), s.getJoinRequestList)
+		classGroup.POST("/join", s.createJoinRequest)
+		classGroup.PUT("/join/:id/review", s.reviewJoinRequest)
+		classGroup.GET("/join", s.getJoinRequestList)
 
 		// 学生班级查询
-		classGroup.GET("/student/:studentId", middleware.JWTMiddleware(), s.getStudentClasses)
+		classGroup.GET("/student/:studentId", s.getStudentClasses)
 
 		// 班级成员管理
-		classGroup.GET("/:id/members", middleware.JWTMiddleware(), s.getClassMembers)
-		classGroup.POST("/:id/members", middleware.JWTMiddleware(), s.addClassMember)
-		classGroup.DELETE("/:id/members", middleware.JWTMiddleware(), s.removeClassMember)
+		classGroup.GET("/:id/members", s.getClassMembers)
+		classGroup.POST("/:id/members", s.addClassMember)
+		classGroup.DELETE("/:id/members", s.removeClassMember)
 	}
 }
 
 func (s *Server) RegisterCourse(g *gin.RouterGroup) {
-	courseGroup := g.Group("/course")
+	courseGroup := g.Group("/course").Use(middleware.JWTMiddleware())
 	{
 		// 课程基础管理
-		courseGroup.POST("", middleware.JWTMiddleware(), s.createCourse)
-		courseGroup.PUT("/:id", middleware.JWTMiddleware(), s.updateCourse)
-		courseGroup.DELETE("/:id", middleware.JWTMiddleware(), s.deleteCourse)
-		courseGroup.PUT("/:id/archive", middleware.JWTMiddleware(), s.archiveCourse)
-		courseGroup.GET("/:id", middleware.JWTMiddleware(), s.getCourse)
-		courseGroup.GET("/code", middleware.JWTMiddleware(), s.getCourseByCode)
-		courseGroup.GET("", middleware.JWTMiddleware(), s.getCourseList)
+		courseGroup.POST("", s.createCourse)
+		courseGroup.PUT("/:id", s.updateCourse)
+		courseGroup.DELETE("/:id", s.deleteCourse)
+		courseGroup.PUT("/:id/archive", s.archiveCourse)
+		courseGroup.GET("/:id", s.getCourse)
+		courseGroup.GET("/code", s.getCourseByCode)
+		courseGroup.GET("", s.getCourseList)
 
 		// 课程成员管理
-		courseGroup.POST("/:id/members", middleware.JWTMiddleware(), s.addCourseMember)
-		courseGroup.DELETE("/:id/members", middleware.JWTMiddleware(), s.removeCourseMember)
-		courseGroup.GET("/:id/members", middleware.JWTMiddleware(), s.getCourseMembers)
+		courseGroup.POST("/:id/members", s.addCourseMember)
+		courseGroup.DELETE("/:id/members", s.removeCourseMember)
+		courseGroup.GET("/:id/members", s.getCourseMembers)
 
 		// 加入申请管理
 		courseGroup.POST("/join", s.createJoinCourseRequest)
-		courseGroup.PUT("/join/:id", middleware.JWTMiddleware(), s.reviewJoinCourseRequest)
-		courseGroup.GET("/:id/join-requests", middleware.JWTMiddleware(), s.getJoinCourseRequestList)
+		courseGroup.PUT("/join/:id", s.reviewJoinCourseRequest)
+		courseGroup.GET("/:id/join-requests", s.getJoinCourseRequestList)
+	}
+}
+
+func (s *Server) RegisterAssignment(r *gin.RouterGroup) {
+	assignment := r.Group("/assignment").Use(middleware.JWTMiddleware())
+	{
+		assignment.POST("", s.CreateAssignment)             // 创建作业
+		assignment.PUT("/:id", s.UpdateAssignment)          // 更新作业
+		assignment.DELETE("/:id", s.DeleteAssignment)       // 删除作业
+		assignment.PUT("/:id/archive", s.ArchiveAssignment) // 归档作业
+		assignment.GET("/:id", s.GetAssignmentDetail)       // 获取作业详情
+		assignment.GET("", s.GetAssignmentList)             // 获取作业列表
+
+		/*学生提交部分*/
+
+		//assignment.GET("/student", s.GetStudentAssignments) // 获取学生作业列表（未完成）
+		assignment.POST("/:id/submit", s.SubmitAssignment) // 提交作业
+		//assignment.GET("/submission", s.GetStudentSubmission) // 获取学生提交信息（未完成）
+
+		// 教师、管理员操作
+		assignment.POST("/grade", s.GradeAssignment)            // 批改作业
+		assignment.POST("/reject", s.RejectAssignment)          // 打回作业
+		assignment.GET("/export/:id", s.ExportAssignmentGrades) // 导出成绩
+		assignment.POST("/students", s.AddStudentsToAssignment) // 添加学生到作业
 	}
 }
 
@@ -181,6 +205,7 @@ func (s *Server) RegisterRoutes() {
 	s.RegisterSubmit(v1)
 	s.RegisterClass(v1)
 	s.RegisterCourse(v1)
+	s.RegisterAssignment(v1)
 }
 
 func (s *Server) Run() error {

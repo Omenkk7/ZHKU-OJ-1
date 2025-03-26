@@ -86,8 +86,8 @@ func JWTMiddleware() gin.HandlerFunc {
 			Role:     int(jwtClaims.Role),
 		}
 		c.Set("contextUser", contextUser)
-		// 为了兼容性，也可以同时设置userId
 		c.Set("userId", jwtClaims.ID.Hex())
+		c.Set("userName", jwtClaims.Username)
 		c.Next()
 	}
 }
