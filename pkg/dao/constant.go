@@ -26,3 +26,10 @@ const (
 	SubmitTable  = "submits"
 	labelTable   = "labels"
 )
+
+// 竞赛模块常量
+const (
+	contestTable            = "contests"
+	contestParticipantTable = "contest_participants"
+	contestRankingTable     = "contest_rankings"
+)

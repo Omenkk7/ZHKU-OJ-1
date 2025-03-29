@@ -88,6 +88,7 @@ func JWTMiddleware() gin.HandlerFunc {
 		c.Set("contextUser", contextUser)
 		c.Set("userId", jwtClaims.ID.Hex())
 		c.Set("userName", jwtClaims.Username)
+		c.Set("role", jwtClaims.Role)
 		c.Next()
 	}
 }

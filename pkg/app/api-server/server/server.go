@@ -177,6 +177,43 @@ func (s *Server) RegisterAssignment(r *gin.RouterGroup) {
 	}
 }
 
+// 竞赛模块路由
+func (s *Server) RegisterContest(r *gin.RouterGroup) {
+	contestGroup := r.Group("/contest").Use(middleware.JWTMiddleware())
+	{
+		// 创建竞赛
+		contestGroup.POST("/create", s.CreateContest)
+		// 更新竞赛
+		contestGroup.PUT("", s.UpdateContest)
+		// 删除竞赛
+		contestGroup.DELETE("/:id", s.DeleteContest)
+		// 归档竞赛
+		contestGroup.PUT("/:id/archive", s.ArchiveContest)
+		// 更新竞赛状态
+		contestGroup.PUT("/:id/status", s.UpdateContestStatus)
+
+		// 添加参赛者
+		contestGroup.POST("/participant/add", s.AddParticipant)
+		// 批量添加参赛者
+		contestGroup.POST("/participant/batch-add", s.BatchAddParticipants)
+		// 移除参赛者
+		contestGroup.DELETE("/participant/remove", s.RemoveParticipant)
+		// 审核参赛者
+		contestGroup.PUT("/participant/audit", s.AuditParticipant)
+		// 导出竞赛成绩
+		contestGroup.GET("/:id/export", s.ExportContestScore) //TODO 未完成
+
+		// 获取竞赛列表
+		contestGroup.GET("/list", s.GetContestList)
+		// 获取竞赛详情
+		contestGroup.GET("/:id", s.GetContestDetail)
+		// 获取参赛者列表
+		contestGroup.GET("/participant/list", s.GetParticipantList)
+		// 获取竞赛排名
+		contestGroup.GET("/:id/ranking", s.GetContestRanking)
+	}
+}
+
 func NewServer(lg logrus.FieldLogger, svc *service.Service, opts *CmdOptions, stopCh <-chan struct{}) *Server {
 	app := gin.Default()
 	app.Use(middleware.CorsHandler()) // set cors
@@ -206,6 +243,7 @@ func (s *Server) RegisterRoutes() {
 	s.RegisterClass(v1)
 	s.RegisterCourse(v1)
 	s.RegisterAssignment(v1)
+	s.RegisterContest(v1)
 }
 
 func (s *Server) Run() error {
