@@ -236,25 +236,23 @@ func (d *Dao) UpdateContestRanking(ctx context.Context, ranking *models.ContestR
 	var existingRanking models.ContestRanking
 	result, err := d.GetOne(ctx, contestRankingTable, &existingRanking, bson.M{
 		"contest_id": ranking.ContestID,
-		"student_id": ranking.StudentID,
 	})
 
-	// 如果已经存在，则更新
 	if result != nil {
+		// 更新整个排名记录
 		_, err = d.Update(ctx, contestRankingTable, bson.M{
 			"contest_id": ranking.ContestID,
-			"student_id": ranking.StudentID,
 		}, bson.M{
-			"solved_problems":  ranking.SolvedProblems,
-			"total_score":      ranking.TotalScore,
-			"total_time":       ranking.TotalTime,
-			"last_submit_time": ranking.LastSubmitTime,
-			"mtime":            time.Now().UnixMilli(),
+			"$set": bson.M{
+				"contest_name":   ranking.ContestName,
+				"rankings":       ranking.Rankings,
+				"generated_time": ranking.GeneratedTime,
+				"mtime":          time.Now().UnixMilli(),
+			},
 		})
 		return err
 	}
 
-	// 如果是其他错误（不是未找到文档的错误），则返回错误
 	if err != nil && err != mongo.ErrNoDocuments {
 		return err
 	}
