@@ -122,10 +122,13 @@ func (s *Server) ArchiveAssignment(c *gin.Context) {
 	}
 
 	// 获取作业ID
-	id := c.Query("id")
+	id := c.Param("id")
 	if id == "" {
-		utils.BadRequest(c, errors.New("参数无效"))
-		return
+		id = c.Query("id")
+		if id == "" {
+			utils.BadRequest(c, errors.New("参数无效"))
+			return
+		}
 	}
 
 	// 归档作业

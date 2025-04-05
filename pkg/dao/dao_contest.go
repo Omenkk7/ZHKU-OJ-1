@@ -81,7 +81,7 @@ func (d *Dao) DeleteContest(ctx context.Context, id string) error {
 		return err
 	}
 	// 使用 $set 操作符包装更新内容
-	updateDoc := bson.M{"$set": bson.M{"status": 0, "mtime": time.Now().UnixMilli()}}
+	updateDoc := bson.M{"$set": bson.M{"status": 0, "mtime": time.Now().Unix()}}
 
 	_, err = d.Update(ctx, contestTable, bson.M{"_id": objectID}, updateDoc)
 	return err
@@ -190,7 +190,7 @@ func (d *Dao) UpdateParticipantStatus(ctx context.Context, contestID, studentID 
 	}, bson.M{
 		"$set": bson.M{
 			"status": status,
-			"mtime":  time.Now().UnixMilli(),
+			"mtime":  time.Now().Unix(),
 		},
 	})
 	return err
@@ -247,7 +247,7 @@ func (d *Dao) UpdateContestRanking(ctx context.Context, ranking *models.ContestR
 				"contest_name":   ranking.ContestName,
 				"rankings":       ranking.Rankings,
 				"generated_time": ranking.GeneratedTime,
-				"mtime":          time.Now().UnixMilli(),
+				"mtime":          time.Now().Unix(),
 			},
 		})
 		return err
@@ -268,7 +268,7 @@ func (d *Dao) UpdateContestStats(ctx context.Context, contestID string, stats mo
 	if err != nil {
 		return err
 	}
-	_, err = d.Update(ctx, contestTable, bson.M{"_id": objectID}, bson.M{"stats": stats, "mtime": time.Now().UnixMilli()})
+	_, err = d.Update(ctx, contestTable, bson.M{"_id": objectID}, bson.M{"stats": stats, "mtime": time.Now().Unix()})
 	return err
 }
 
@@ -279,7 +279,7 @@ func (d *Dao) UpdateContestStatus(ctx context.Context, contestID string, status 
 		return err
 	}
 	// 使用 $set 操作符包装更新内容
-	updateDoc := bson.M{"$set": bson.M{"status": status, "mtime": time.Now().UnixMilli()}}
+	updateDoc := bson.M{"$set": bson.M{"status": status, "mtime": time.Now().Unix()}}
 	_, err = d.Update(ctx, contestTable, bson.M{"_id": objectID}, updateDoc)
 	return err
 }
@@ -378,7 +378,7 @@ func (d *Dao) UpdateParticipantResult(ctx context.Context, contestID, studentID 
 		"student_id": studentID,
 	}, bson.M{
 		"result": result,
-		"mtime":  time.Now().UnixMilli(),
+		"mtime":  time.Now().Unix(),
 	})
 	return err
 }

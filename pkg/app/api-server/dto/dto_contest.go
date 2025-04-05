@@ -131,7 +131,7 @@ func BindAndValid(c *gin.Context, req interface{}) (int, string) {
 
 // 将CreateContestReq转换为Contest
 func (req *CreateContestReq) ToContest(creatorID, creatorName string) *models.Contest {
-	now := time.Now().UnixMilli() // 使用标准库函数获取当前时间戳
+	now := time.Now().Unix()
 
 	// 创建一个 ObjectID 对象用于创建者ID
 	creatorObjID, _ := primitive.ObjectIDFromHex(creatorID)
@@ -141,8 +141,8 @@ func (req *CreateContestReq) ToContest(creatorID, creatorName string) *models.Co
 		ContestCode:     req.ContestCode,
 		Name:            req.Name,
 		Description:     req.Description,
-		StartTime:       req.StartTime,
-		EndTime:         req.EndTime,
+		StartTime:       req.StartTime / 1000,
+		EndTime:         req.EndTime / 1000,
 		ContestType:     req.ContestType,
 		AccessType:      req.AccessType,
 		MaxParticipants: req.MaxParticipants,

@@ -130,7 +130,7 @@ func (s *Server) RegisterClass(g *gin.RouterGroup) {
 }
 
 func (s *Server) RegisterCourse(g *gin.RouterGroup) {
-	courseGroup := g.Group("/course").Use(middleware.JWTMiddleware())
+	courseGroup := g.Group("/courses").Use(middleware.JWTMiddleware())
 	{
 		// 课程基础管理
 		courseGroup.POST("", s.createCourse)

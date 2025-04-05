@@ -231,6 +231,17 @@ func (d *Dao) CheckUserCourseRole(ctx context.Context, courseID string, userID s
 		return nil, err
 	}
 
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err == nil {
+		selector := bson.M{
+			"_id": objID,
+		}
+		user, err := d.GetOneUser(ctx, selector)
+		if err == nil && user != nil && user.Role == 1 {
+			return []int{1}, nil
+		}
+	}
+
 	// 获取课程信息
 	course, err := d.GetCourseByID(ctx, courseID)
 	if err != nil {

@@ -75,7 +75,7 @@ func (s *Service) CreateContestRanking(ctx context.Context, contestID string) er
 		ContestID:     contestID,
 		ContestName:   contest.Name,
 		Rankings:      make([]models.RankingItem, 0),
-		GeneratedTime: time.Now().UnixMilli(),
+		GeneratedTime: time.Now().Unix(),
 	}
 
 	return s.dao.UpdateContestRanking(ctx, ranking)
@@ -178,7 +178,7 @@ func (s *Service) UpdateContest(ctx context.Context, id string, req *dto.UpdateC
 	}
 
 	// 构建更新对象
-	update := bson.M{"mtime": time.Now().UnixMilli()}
+	update := bson.M{"mtime": time.Now().Unix()}
 
 	if req.Name != "" {
 		update["name"] = req.Name
@@ -368,10 +368,10 @@ func (s *Service) AddParticipant(ctx context.Context, req *dto.AddParticipantReq
 		ContestName:  contest.Name,
 		StudentID:    req.StudentID,
 		StudentName:  req.StudentName,
-		RegisterTime: time.Now().UnixMilli(),
+		RegisterTime: time.Now().Unix(),
 		Status:       1, // 默认通过
-		Ctime:        time.Now().UnixMilli(),
-		Mtime:        time.Now().UnixMilli(),
+		Ctime:        time.Now().Unix(),
+		Mtime:        time.Now().Unix(),
 	}
 
 	// 添加参赛者
@@ -440,10 +440,10 @@ func (s *Service) BatchAddParticipants(ctx context.Context, req *dto.BatchAddPar
 			ContestName:  contest.Name,
 			StudentID:    student.ID.Hex(),
 			StudentName:  student.Username,
-			RegisterTime: time.Now().UnixMilli(),
+			RegisterTime: time.Now().Unix(),
 			Status:       1, // 设置为待审核状态
-			Ctime:        time.Now().UnixMilli(),
-			Mtime:        time.Now().UnixMilli(),
+			Ctime:        time.Now().Unix(),
+			Mtime:        time.Now().Unix(),
 		}
 
 		// 添加参赛者

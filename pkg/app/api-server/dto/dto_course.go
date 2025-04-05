@@ -4,12 +4,12 @@ package dto
 
 // CreateCourseRequest 创建课程请求
 type CreateCourseRequest struct {
-	CourseCode  string `json:"course_code" binding:"required"` // 课程代码
-	Name        string `json:"name" binding:"required"`        // 课程名称
-	Department  string `json:"department" binding:"required"`  // 所属院系
-	Description string `json:"description"`                    // 课程描述
-	StartTime   int64  `json:"start_time" binding:"required"`  // 开课时间
-	EndTime     int64  `json:"end_time" binding:"required"`    // 结课时间
+	CourseCode  string `json:"course_code"`                   // 课程代码
+	Name        string `json:"name" binding:"required"`       // 课程名称
+	Department  string `json:"department" binding:"required"` // 所属院系
+	Description string `json:"description"`                   // 课程描述
+	StartTime   int64  `json:"start_time" binding:"required"` // 开课时间
+	EndTime     int64  `json:"end_time" binding:"required"`   // 结课时间
 }
 
 // UpdateCourseRequest 更新课程请求
