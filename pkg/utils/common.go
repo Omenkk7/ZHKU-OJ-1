@@ -186,3 +186,50 @@ type ContextUser struct {
 	Username string
 	Role     int
 }
+
+// BuildQueryParamsFromValues 从已解析的参数构建查询对象
+func BuildQueryParamsFromValues(page, pageSize int, filters, sorts map[string]interface{}) *CommonQuery {
+	// 构建查询参数
+	comQuery := &CommonQuery{
+		PageNum:  int64(page),
+		PageSize: int64(pageSize),
+		Filters:  make(map[string]any),
+	}
+
+	if filters != nil {
+		for k, v := range filters {
+			comQuery.Filters[k] = v
+		}
+	}
+
+	if sorts != nil && len(sorts) > 0 {
+		for k, v := range sorts {
+			comQuery.Sort = k
+
+			// 处理排序方向，支持多种类型
+			switch val := v.(type) {
+			case int:
+				if val == -1 {
+					comQuery.Direction = -1
+				} else {
+					comQuery.Direction = 1
+				}
+			case string:
+				if val == "desc" {
+					comQuery.Direction = -1
+				} else {
+					comQuery.Direction = 1
+				}
+			default:
+				comQuery.Direction = 1
+			}
+
+			break
+		}
+	} else {
+		comQuery.Sort = DefaultSort
+		comQuery.Direction = DefaultDirection
+	}
+
+	return comQuery
+}

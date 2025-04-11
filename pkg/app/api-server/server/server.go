@@ -91,6 +91,130 @@ func (s *Server) RegisterSubmit(g *gin.RouterGroup) {
 	}
 }
 
+func (s *Server) RegisterClass(g *gin.RouterGroup) {
+	classGroup := g.Group("/class").Use(middleware.JWTMiddleware())
+	{
+		// 班级管理
+		classGroup.POST("", s.createClass)
+		classGroup.PUT("/:id", s.updateClass)
+		classGroup.DELETE("/:id", s.deleteClass)
+		classGroup.PUT("/:id/archive", s.archiveClass)
+		classGroup.GET("/:id", s.getClassByID)
+		classGroup.GET("/code/:code", s.getClassByCode)
+		classGroup.GET("", s.getClassList)
+
+		// 班级学生管理
+		classGroup.POST("/:id/student", s.addStudentToClass)
+		classGroup.POST("/:id/students", s.batchAddStudentsToClass)
+		classGroup.DELETE("/:id/student/:studentId", s.removeStudentFromClass)
+		classGroup.GET("/:id/students", s.getClassStudents)
+
+		// 班级课程管理
+		classGroup.POST("/:id/course", s.addCourseToClass)
+		classGroup.DELETE("/:id/course/:courseId", s.removeCourseFromClass)
+		classGroup.PUT("/:id/course/:courseId/status", s.updateCourseStatusInClass)
+		classGroup.GET("/course/:courseId", s.getClassesByCourseID)
+
+		// 加入申请管理
+		classGroup.POST("/join", s.createJoinRequest)
+		classGroup.PUT("/join/:id/review", s.reviewJoinRequest)
+		classGroup.GET("/join", s.getJoinRequestList)
+
+		// 学生班级查询
+		classGroup.GET("/student/:studentId", s.getStudentClasses)
+
+		// 班级成员管理
+		classGroup.GET("/:id/members", s.getClassMembers)
+		classGroup.POST("/:id/members", s.addClassMember)
+		classGroup.DELETE("/:id/members", s.removeClassMember)
+	}
+}
+
+func (s *Server) RegisterCourse(g *gin.RouterGroup) {
+	courseGroup := g.Group("/courses").Use(middleware.JWTMiddleware())
+	{
+		// 课程基础管理
+		courseGroup.POST("", s.createCourse)
+		courseGroup.PUT("/:id", s.updateCourse)
+		courseGroup.DELETE("/:id", s.deleteCourse)
+		courseGroup.PUT("/:id/archive", s.archiveCourse)
+		courseGroup.GET("/:id", s.getCourse)
+		courseGroup.GET("/code", s.getCourseByCode)
+		courseGroup.GET("", s.getCourseList)
+
+		// 课程成员管理
+		courseGroup.POST("/:id/members", s.addCourseMember)
+		courseGroup.DELETE("/:id/members", s.removeCourseMember)
+		courseGroup.GET("/:id/members", s.getCourseMembers)
+
+		// 加入申请管理
+		courseGroup.POST("/join", s.createJoinCourseRequest)
+		courseGroup.PUT("/join/:id", s.reviewJoinCourseRequest)
+		courseGroup.GET("/:id/join-requests", s.getJoinCourseRequestList)
+	}
+}
+
+func (s *Server) RegisterAssignment(r *gin.RouterGroup) {
+	assignment := r.Group("/assignment").Use(middleware.JWTMiddleware())
+	{
+		assignment.POST("", s.CreateAssignment)             // 创建作业
+		assignment.PUT("/:id", s.UpdateAssignment)          // 更新作业
+		assignment.DELETE("/:id", s.DeleteAssignment)       // 删除作业
+		assignment.PUT("/:id/archive", s.ArchiveAssignment) // 归档作业
+		assignment.GET("/:id", s.GetAssignmentDetail)       // 获取作业详情
+		assignment.GET("", s.GetAssignmentList)             // 获取作业列表
+
+		/*学生提交部分*/
+
+		//assignment.GET("/student", s.GetStudentAssignments) // 获取学生作业列表（未完成）
+		assignment.POST("/:id/submit", s.SubmitAssignment) // 提交作业
+		//assignment.GET("/submission", s.GetStudentSubmission) // 获取学生提交信息（未完成）
+
+		// 教师、管理员操作
+		assignment.POST("/grade", s.GradeAssignment)            // 批改作业
+		assignment.POST("/reject", s.RejectAssignment)          // 打回作业
+		assignment.GET("/export/:id", s.ExportAssignmentGrades) // 导出成绩
+		assignment.POST("/students", s.AddStudentsToAssignment) // 添加学生到作业
+	}
+}
+
+// 竞赛模块路由
+func (s *Server) RegisterContest(r *gin.RouterGroup) {
+	contestGroup := r.Group("/contest").Use(middleware.JWTMiddleware())
+	{
+		// 创建竞赛
+		contestGroup.POST("/create", s.CreateContest)
+		// 更新竞赛
+		contestGroup.PUT("", s.UpdateContest)
+		// 删除竞赛
+		contestGroup.DELETE("/:id", s.DeleteContest)
+		// 归档竞赛
+		contestGroup.PUT("/:id/archive", s.ArchiveContest)
+		// 更新竞赛状态
+		contestGroup.PUT("/:id/status", s.UpdateContestStatus)
+
+		// 添加参赛者
+		contestGroup.POST("/participant/add", s.AddParticipant)
+		// 批量添加参赛者
+		contestGroup.POST("/participant/batch-add", s.BatchAddParticipants)
+		// 移除参赛者
+		contestGroup.DELETE("/participant/remove", s.RemoveParticipant)
+		// 审核参赛者
+		contestGroup.PUT("/participant/audit", s.AuditParticipant)
+		// 导出竞赛成绩
+		contestGroup.GET("/:id/export", s.ExportContestScore) //TODO 未完成
+
+		// 获取竞赛列表
+		contestGroup.GET("/list", s.GetContestList)
+		// 获取竞赛详情
+		contestGroup.GET("/:id", s.GetContestDetail)
+		// 获取参赛者列表
+		contestGroup.GET("/participant/list", s.GetParticipantList)
+		// 获取竞赛排名
+		contestGroup.GET("/:id/ranking", s.GetContestRanking)
+	}
+}
+
 func NewServer(lg logrus.FieldLogger, svc *service.Service, opts *CmdOptions, stopCh <-chan struct{}) *Server {
 	app := gin.Default()
 	app.Use(middleware.CorsHandler()) // set cors
@@ -117,6 +241,10 @@ func (s *Server) RegisterRoutes() {
 	s.RegisterLabel(v1)
 	s.RegisterProblem(v1)
 	s.RegisterSubmit(v1)
+	s.RegisterClass(v1)
+	s.RegisterCourse(v1)
+	s.RegisterAssignment(v1)
+	s.RegisterContest(v1)
 }
 
 func (s *Server) Run() error {

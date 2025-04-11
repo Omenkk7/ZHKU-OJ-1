@@ -171,6 +171,17 @@ func (m *MongoDB) Update(ctx context.Context, table string, selector, update int
 	return res.ModifiedCount > 0, nil
 }
 
+// UpdateOne 更新单个文档
+func (m *MongoDB) UpdateOne(ctx context.Context, table string, selector interface{}, update interface{}, opts ...*options.UpdateOptions) (ok bool, err error) {
+	ctx, cancel := context.WithTimeout(ctx, m.timeout)
+	defer cancel()
+	res, err := m.client.Database(m.db).Collection(table).UpdateOne(ctx, selector, update, opts...)
+	if err != nil {
+		return false, err
+	}
+	return res.ModifiedCount > 0, nil
+}
+
 func (m *MongoDB) BulkInsert(ctx context.Context, table string, ordered bool, docs ...interface{}) (ok bool, err error) {
 	ctx, cancel := context.WithTimeout(ctx, m.timeout)
 	defer cancel()
@@ -200,4 +211,11 @@ func (m *MongoDB) Aggregate(ctx context.Context, table string, pipeline interfac
 	}()
 	err = cursor.All(ctx, &result)
 	return
+}
+
+// Count 计算符合条件的文档数量
+func (m *MongoDB) Count(ctx context.Context, collection string, filter interface{}) (int64, error) {
+	ctx, cancel := context.WithTimeout(ctx, m.timeout)
+	defer cancel()
+	return m.client.Database(m.db).Collection(collection).CountDocuments(ctx, filter)
 }

@@ -54,6 +54,7 @@ const (
 	DefaultSort      = "_id"
 	Sort             = "_sort"
 	Desc             = "desc"
+	Asc              = "asc"
 	Descending       = -1
 	Ascending        = 1
 	DefaultDirection = Ascending
@@ -65,4 +66,46 @@ const (
 	JwtTokenHeaderKey        = "X-Auth-Token"
 	RememberEffectiveTime    = time.Hour * time.Duration(24*14)
 	NotRememberEffectiveTime = time.Hour * time.Duration(2)
+
+	ClassTable            = "classes"             // 班级表
+	ClassStudentTable     = "class_students"      // 班级学生关系表
+	ClassJoinRequestTable = "class_join_requests" // 班级加入申请表
+
+	CourseTable            = "courses"              // 课程表
+	CourseJoinRequestTable = "course_join_requests" // 课程加入申请表
+
+	CourseRoleAdmin     = 1 // 管理员
+	CourseRoleTeacher   = 2 // 教师
+	CourseRoleAssistant = 3 // 助教
+	CourseRoleStudent   = 4 // 学生
+
+	CourseStatusOpen   = 1 // 开放
+	CourseStatusClosed = 0 // 已结课
+
+	CourseJoinStatusPending  = 0 // 待审核
+	CourseJoinStatusApproved = 1 // 已通过
+	CourseJoinStatusRejected = 2 // 已拒绝
+
+	AssignmentTable = "assignments" // 作业表
+
+)
+
+// 竞赛相关常量
+const (
+	// 角色常量
+	ContestRoleAdmin   = "1" // 管理员
+	ContestRoleTeacher = "2" // 教师
+	ContestRoleTA      = "3" // 助教
+	ContestRoleStudent = "4" // 学生
+
+	// 竞赛状态常量
+	ContestStatusDeleted  = 0 // 已删除
+	ContestStatusNotStart = 1 // 未开始
+	ContestStatusRunning  = 2 // 进行中
+	ContestStatusEnded    = 3 // 已结束
+	ContestStatusArchived = 4 // 已归档
+
+	// 参赛规则常量
+	ContestAccessPrivate = 0 // 私有
+	ContestAccessPublic  = 1 // 公开
 )
