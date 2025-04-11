@@ -87,7 +87,7 @@ func (s *Server) RegisterSubmit(g *gin.RouterGroup) {
 	userGroup := g.Group("/submit")
 	{
 		userGroup.POST("/", s.Submit)
-		userGroup.GET("/:id", s.GetOneSubmit)
+		userGroup.POST("/:id", s.GetOneSubmit)
 	}
 }
 

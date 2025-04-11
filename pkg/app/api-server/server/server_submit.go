@@ -29,6 +29,7 @@ func (s *Server) GetOneSubmit(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	//把参数解析结构体到label
 	var submit *dto.ReqSubmit
+
 	if err := c.BindJSON(&submit); err != nil {
 		return
 	}
