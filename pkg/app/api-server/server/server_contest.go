@@ -99,6 +99,13 @@ func (s *Server) UpdateContest(c *gin.Context) {
 		return
 	}
 
+	// 从URL路径参数获取竞赛ID
+	id := c.Param("id")
+	if id == "" {
+		utils.BadRequest(c, errors.New("竞赛ID不能为空"))
+		return
+	}
+
 	// 解析请求
 	var req dto.UpdateContestReq
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -106,16 +113,19 @@ func (s *Server) UpdateContest(c *gin.Context) {
 		return
 	}
 
-	// 验证ID不为空
-	if req.ID == "" {
-		utils.BadRequest(c, errors.New("竞赛ID不能为空"))
-		return
-	}
-
 	// 更新竞赛
-	err := s.svc.UpdateContest(c, req.ID, &req, userID.(string))
+	err := s.svc.UpdateContest(c, id, &req, userID.(string))
 	if err != nil {
-		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		switch err.Error() {
+		case "mongo: no documents in result":
+			utils.FailedResponse(c, http.StatusNotFound, errors.New("竞赛不存在或已被删除"))
+		case "无效的竞赛ID":
+			utils.BadRequest(c, err)
+		case "无权限更新此竞赛":
+			utils.FailedResponse(c, http.StatusForbidden, err)
+		default:
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+		}
 		return
 	}
 

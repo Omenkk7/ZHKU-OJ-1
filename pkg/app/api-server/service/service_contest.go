@@ -154,7 +154,6 @@ func (s *Service) UpdateContest(ctx context.Context, id string, req *dto.UpdateC
 	if err != nil {
 		return errors.New("无效的竞赛ID")
 	}
-
 	// 获取竞赛
 	contest, err := s.dao.GetContestByID(ctx, id)
 	if err != nil {
@@ -164,7 +163,7 @@ func (s *Service) UpdateContest(ctx context.Context, id string, req *dto.UpdateC
 		return err
 	}
 
-	hasPermission, err := s.CheckContestPermission(ctx, id, userID, []string{utils.ContestRoleAdmin, utils.ContestRoleTeacher})
+	hasPermission, err := s.CheckContestPermission(ctx, id, userID, []int{utils.ContestRoleAdmin, utils.RoleTeacher})
 	if err != nil {
 		return err
 	}
@@ -253,7 +252,7 @@ func (s *Service) DeleteContest(ctx context.Context, id string, userID string) e
 	}
 
 	// 验证权限
-	hasPermission, err := s.CheckContestPermission(ctx, id, userID, []string{utils.ContestRoleAdmin, utils.ContestRoleTeacher})
+	hasPermission, err := s.CheckContestPermission(ctx, id, userID, []int{utils.ContestRoleAdmin, utils.RoleTeacher})
 	if err != nil {
 		return err
 	}
@@ -285,7 +284,7 @@ func (s *Service) ArchiveContest(ctx context.Context, id string, userID string) 
 	}
 
 	// 验证权限
-	hasPermission, err := s.CheckContestPermission(ctx, id, userID, []string{utils.ContestRoleAdmin, utils.ContestRoleTeacher})
+	hasPermission, err := s.CheckContestPermission(ctx, id, userID, []int{utils.ContestRoleAdmin, utils.RoleTeacher})
 	if err != nil {
 		return err
 	}
@@ -311,7 +310,7 @@ func (s *Service) UpdateContestStatus(ctx context.Context, id string, status int
 	}
 
 	// 验证权限
-	hasPermission, err := s.CheckContestPermission(ctx, id, userID, []string{utils.ContestRoleAdmin})
+	hasPermission, err := s.CheckContestPermission(ctx, id, userID, []int{utils.ContestRoleAdmin})
 	if err != nil {
 		return err
 	}
@@ -352,7 +351,7 @@ func (s *Service) AddParticipant(ctx context.Context, req *dto.AddParticipantReq
 	// 验证权限
 	if contest.AccessType == utils.ContestAccessPrivate {
 		// 私有竞赛需要管理员或教师权限
-		hasPermission, err := s.CheckContestPermission(ctx, req.ContestID, userID, []string{utils.ContestRoleAdmin, utils.ContestRoleTeacher})
+		hasPermission, err := s.CheckContestPermission(ctx, req.ContestID, userID, []int{utils.ContestRoleAdmin, utils.RoleTeacher})
 		if err != nil {
 			return err
 		}
@@ -388,7 +387,7 @@ func (s *Service) AddParticipant(ctx context.Context, req *dto.AddParticipantReq
 		ID:       studentObjID,
 		Username: req.StudentName,
 	}
-	return s.dao.AddMember(ctx, contestID.Hex(), utils.ContestRoleStudent, user)
+	return s.dao.AddMember(ctx, contestID.Hex(), strconv.Itoa(utils.RoleStudent), user)
 }
 
 // BatchAddParticipants 批量添加参赛者
@@ -418,7 +417,7 @@ func (s *Service) BatchAddParticipants(ctx context.Context, req *dto.BatchAddPar
 	}
 
 	// 验证权限
-	hasPermission, err := s.CheckContestPermission(ctx, req.ContestID, userID, []string{utils.ContestRoleAdmin, utils.ContestRoleTeacher})
+	hasPermission, err := s.CheckContestPermission(ctx, req.ContestID, userID, []int{utils.ContestRoleAdmin, utils.RoleTeacher})
 	if err != nil {
 		return err
 	}
@@ -456,7 +455,7 @@ func (s *Service) BatchAddParticipants(ctx context.Context, req *dto.BatchAddPar
 		}
 
 		// 添加到竞赛成员
-		err = s.dao.AddMember(ctx, contestID.Hex(), utils.ContestRoleStudent, student)
+		err = s.dao.AddMember(ctx, contestID.Hex(), strconv.Itoa(utils.RoleStudent), student)
 		if err != nil {
 			log.Printf("添加竞赛成员失败: contestID=%s, studentID=%s, error=%v",
 				req.ContestID, student.ID.Hex(), err)
@@ -499,7 +498,7 @@ func (s *Service) RemoveParticipant(ctx context.Context, req *dto.RemoveParticip
 	}
 
 	// 验证权限
-	hasPermission, err := s.CheckContestPermission(ctx, req.ContestID, userID, []string{utils.ContestRoleAdmin, utils.ContestRoleTeacher})
+	hasPermission, err := s.CheckContestPermission(ctx, req.ContestID, userID, []int{utils.ContestRoleAdmin, utils.RoleTeacher})
 	if err != nil {
 		return err
 	}
@@ -561,7 +560,7 @@ func (s *Service) AuditParticipant(ctx context.Context, req *dto.AuditParticipan
 	}
 
 	// 验证权限
-	hasPermission, err := s.CheckContestPermission(ctx, req.ContestID, userID, []string{utils.ContestRoleAdmin, utils.ContestRoleTeacher})
+	hasPermission, err := s.CheckContestPermission(ctx, req.ContestID, userID, []int{utils.ContestRoleAdmin, utils.RoleTeacher})
 	if err != nil {
 		return err
 	}
@@ -663,7 +662,7 @@ func (s *Service) hasPermission(contest *models.Contest, userID string, allowedR
 }
 
 // CheckContestPermission 检查用户是否有权限操作竞赛
-func (s *Service) CheckContestPermission(ctx context.Context, contestID string, userID string, allowedRoles []string) (bool, error) {
+func (s *Service) CheckContestPermission(ctx context.Context, contestID string, userID string, allowedRoles []int) (bool, error) {
 	// 验证ID
 	objID, err := primitive.ObjectIDFromHex(contestID)
 	if err != nil {
@@ -703,12 +702,14 @@ func (s *Service) CheckContestPermission(ctx context.Context, contestID string, 
 
 	// 检查用户角色
 	for _, role := range allowedRoles {
-		members, ok := contest.Members[role]
+		// 将int角色转为string
+		roleStr := strconv.Itoa(role)
+		members, ok := contest.Members[roleStr]
 		if !ok {
 			continue
 		}
 		for _, member := range members {
-			if member.ID.Hex() == userID { // 修正这里，使用 ID.Hex() 而不是 UserID
+			if member.ID.Hex() == userID {
 				hasPermission = true
 				return hasPermission, nil
 			}

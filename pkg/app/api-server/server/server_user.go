@@ -18,17 +18,25 @@ func (s *Server) PostUser(c *gin.Context) {
 	//打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Info("注册......")
+
 	//把参数解析到postUser
 	var postUser *dto.ReqPostUser
 	if err := c.BindJSON(&postUser); err != nil {
+		utils.BadRequest(c, err)
 		return
 	}
-	//调用service_user层
 
+	// 如果未指定角色，默认为学生角色
+	if postUser.Role == 0 {
+		postUser.Role = 4 // 默认为学生
+	}
+
+	//调用service_user层
 	id, err := s.svc.PostUser(postUser)
+
 	//返回结果
 	if err != nil {
-		lg.Errorf("getUserList: %v", err)
+		lg.Errorf("注册用户失败: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}

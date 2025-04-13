@@ -247,7 +247,7 @@ func (s *Service) AddCourseMember(c *gin.Context, courseID string, req *dto.AddC
 	}
 
 	// 如果添加的是学生，更新学生数量
-	if req.Role == utils.CourseRoleStudent {
+	if req.Role == utils.RoleStudent {
 		return s.dao.UpdateCourseStudentCount(c, courseID)
 	}
 
@@ -277,7 +277,7 @@ func (s *Service) RemoveCourseMember(c *gin.Context, courseID string, userID str
 	}
 
 	// 如果移除的是学生，更新学生数量
-	if role == utils.CourseRoleStudent {
+	if role == utils.RoleStudent {
 		return s.dao.UpdateCourseStudentCount(c, courseID)
 	}
 
@@ -307,7 +307,7 @@ func (s *Service) UpdateCourseMemberStatus(c *gin.Context, courseID string, user
 	}
 
 	// 如果更新的是学生，更新学生数量
-	if role == utils.CourseRoleStudent {
+	if role == utils.RoleStudent {
 		return s.dao.UpdateCourseStudentCount(c, courseID)
 	}
 
@@ -500,7 +500,7 @@ func (s *Service) ReviewJoinCourseRequest(c *gin.Context, requestID string, revi
 			JoinTime:      now,
 		}
 
-		err = s.dao.AddCourseMember(c, joinRequest.CourseID, member, utils.CourseRoleStudent)
+		err = s.dao.AddCourseMember(c, joinRequest.CourseID, member, utils.RoleStudent)
 		if err != nil {
 			return nil, err
 		}

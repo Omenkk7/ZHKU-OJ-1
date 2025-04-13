@@ -12,6 +12,7 @@ import (
 	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"time"
 	"zhku-oj-server/pkg/app/api-server/dto"
 	"zhku-oj-server/pkg/models"
@@ -110,36 +111,59 @@ func (s *Service) GetUserList(comQuery *utils.CommonQuery) (items *utils.RespPag
 // TODO 校验邮箱，电话，密码的格式
 func (s *Service) PostUser(reqPostUser *dto.ReqPostUser) (id string, err error) {
 	lg := utils.GetDefaultLogger()
-	//1.判空
-	if reqPostUser.Username == "" || reqPostUser.Password == "" {
-		lg.Info(utils.CountOrPasswordNullErr)
-		return "", errors.New(utils.CountOrPasswordNullErr)
+	lg.Info("注册用户......")
+
+	// 检查用户名是否已存在
+	existUser, err := s.dao.GetOneUser(context.Background(), bson.M{"username": reqPostUser.Username})
+	if err != nil && err != mongo.ErrNoDocuments {
+		lg.Info(utils.QueryErr, err)
+		return "", errors.New(utils.QueryErr)
 	}
-	//2.检查用户名是否存在
-	query := bson.M{
-		"username": reqPostUser.Username,
+	if existUser != nil {
+		lg.Info(utils.UserExistErr)
+		return "", errors.New(utils.UserExistErr)
 	}
-	daoUser, _ := s.dao.GetOneUser(context.Background(), query)
-	if daoUser != nil {
-		lg.Infof("用户名%s已被注册", reqPostUser.Username)
-		return "", errors.New(utils.RegisteredErr)
+
+	// 验证角色值是否有效
+	if reqPostUser.Role < 1 || reqPostUser.Role > 4 {
+		lg.Info("无效的用户角色")
+		return "", errors.New("无效的用户角色，请选择有效的角色：1-管理员、2-教师、3-助教、4-学生")
 	}
-	//3.未被注册，一切正常
-	hashPassword, _ := utils.HashPassword(reqPostUser.Password) //hash加密
-	daoUser = &models.User{
+
+	// 管理员注册，需要进行额外验证
+	if reqPostUser.Role == 1 {
+		// 管理员注册的特殊验证逻辑
+	}
+
+	// 创建用户对象
+	user := &models.User{
+		ID:       primitive.NewObjectID(),
 		Username: reqPostUser.Username,
-		Password: hashPassword,
+		Password: reqPostUser.Password,
 		Email:    reqPostUser.Email,
 		Phone:    reqPostUser.Phone,
-		Status:   utils.StatusNormal,
-		Role:     utils.StatusUser,
+		Role:     reqPostUser.Role,
+		Nickname: reqPostUser.Nickname,
+		Class:    reqPostUser.Class,
+		Sid:      reqPostUser.Sid,
+		Status:   1, // 默认状态为正常
 		Ctime:    time.Now().Unix(),
 		Mtime:    time.Now().Unix(),
 	}
-	id, err = s.dao.CreateUser(context.Background(), daoUser)
+
+	// 密码加密
+	hashPassword, err := utils.HashPassword(user.Password)
 	if err != nil {
-		lg.Info(utils.ServerErr, err)
-		return "", errors.New(utils.ServerErr)
+		lg.Info(utils.HashErr, err)
+		return "", errors.New(utils.HashErr)
+	}
+	user.Password = hashPassword
+
+	// 调用dao层创建用户
+	id, err = s.dao.CreateUser(context.Background(), user)
+	if err != nil {
+		lg.Info(utils.CreateErr, err)
+		return "", errors.New(utils.CreateErr)
 	}
 	return id, nil
 }

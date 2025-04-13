@@ -184,7 +184,7 @@ func (s *Server) RegisterContest(r *gin.RouterGroup) {
 		// 创建竞赛
 		contestGroup.POST("/create", s.CreateContest)
 		// 更新竞赛
-		contestGroup.PUT("", s.UpdateContest)
+		contestGroup.PUT("/:id", s.UpdateContest)
 		// 删除竞赛
 		contestGroup.DELETE("/:id", s.DeleteContest)
 		// 归档竞赛
