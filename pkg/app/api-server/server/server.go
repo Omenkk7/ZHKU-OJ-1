@@ -215,6 +215,18 @@ func (s *Server) RegisterContest(r *gin.RouterGroup) {
 	}
 }
 
+// RegisterAI 路由器
+func (s *Server) RegisterAI(g *gin.RouterGroup) {
+	userGroup := g.Group("/ai")
+	{
+		userGroup.POST("/chat-messages", s.Chat)                                     // 查询对话的信息
+		userGroup.GET("/messages", s.GetMessage)                                     // 查询对话记录
+		userGroup.GET("/conversations", s.GetConversations)                          //查询对话的信息
+		userGroup.POST("/conversations/:conversation_id/name", s.RenameConversation) //重命名对话
+		userGroup.DELETE("/conversations/:conversation_id", s.DeleteConversation)    //删除对话
+	}
+}
+
 func NewServer(lg logrus.FieldLogger, svc *service.Service, opts *CmdOptions, stopCh <-chan struct{}) *Server {
 	app := gin.Default()
 	app.Use(middleware.CorsHandler()) // set cors
@@ -245,6 +257,7 @@ func (s *Server) RegisterRoutes() {
 	s.RegisterCourse(v1)
 	s.RegisterAssignment(v1)
 	s.RegisterContest(v1)
+	s.RegisterAI(v1)
 }
 
 func (s *Server) Run() error {
