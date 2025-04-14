@@ -13,3 +13,6 @@ Judge:
 Sandbox:
   Url: "http://localhost:5050/run"
   Method: "POST"
+Dify:
+  APIKey: "app-N1VW5k8Tuxxb0CyWSUV4oCxN"
+  APIURL: "http://localhost/v1"

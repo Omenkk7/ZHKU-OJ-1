@@ -11,6 +11,7 @@ type Config struct {
 	Mongo   MongoConfig   `yaml:"Mongo"`
 	Judge   JudgeConfig   `yaml:"Judge"`
 	Sandbox SandboxConfig `yaml:"Sandbox"`
+	Dify    DifyConfig    `yaml:"Dify"` // 新增Dify配置
 }
 
 // AppConfig 结构体表示App部分的配置
@@ -41,6 +42,12 @@ type JDKConfig struct {
 type SandboxConfig struct {
 	Url    string `yaml:"Url"`
 	Method string `yaml:"Method"`
+}
+
+// DifyConfig 结构体表示Dify API的配置
+type DifyConfig struct {
+	APIKey string `yaml:"APIKey"`
+	APIURL string `yaml:"APIURL"`
 }
 
 // LoadConfig 从指定的YAML文件加载配置
@@ -79,4 +86,9 @@ func (c *Config) GetJudgeConfig() JudgeConfig {
 // GetSandboxConfig 返回Sandbox部分的配置
 func (c *Config) GetSandboxConfig() SandboxConfig {
 	return c.Sandbox
+}
+
+// GetDifyConfig 返回Dify API的配置
+func (c *Config) GetDifyConfig() DifyConfig {
+	return c.Dify
 }
