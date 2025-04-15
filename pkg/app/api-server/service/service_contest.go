@@ -18,8 +18,18 @@ import (
 
 // CreateContest 创建竞赛
 func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, userID, userName string) (string, error) {
+	lg := utils.GetDefaultLogger()
+	lg.Infof("创建竞赛请求: %+v", req)
+
+	// 验证访问类型
+	if req.AccessType != utils.ContestAccessPublic && req.AccessType != utils.ContestAccessPrivate {
+		lg.Errorf("无效的竞赛访问类型: %d", req.AccessType)
+		return "", fmt.Errorf("无效的竞赛访问类型: %d，只能是1(公开)或2(私有)", req.AccessType)
+	}
+
 	// 验证时间
 	if req.StartTime >= req.EndTime {
+		lg.Errorf("时间验证失败: 开始时间 %d >= 结束时间 %d", req.StartTime, req.EndTime)
 		return "", errors.New("开始时间必须早于结束时间")
 	}
 
@@ -31,6 +41,7 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 		// 检查竞赛代码是否已存在
 		existingContest, err := s.dao.GetContestByCode(ctx, req.ContestCode)
 		if err != nil && err != mongo.ErrNoDocuments {
+			lg.Errorf("检查竞赛代码失败: %v", err)
 			return "", err
 		}
 
@@ -39,6 +50,7 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 			req.ContestCode = utils.GenerateContestCode(req.ContestType)
 			existingContest, err = s.dao.GetContestByCode(ctx, req.ContestCode)
 			if err != nil && err != mongo.ErrNoDocuments {
+				lg.Errorf("检查竞赛代码失败: %v", err)
 				return "", err
 			}
 		}
@@ -46,9 +58,11 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 		// 如果提供了竞赛代码，检查是否已存在
 		existingContest, err := s.dao.GetContestByCode(ctx, req.ContestCode)
 		if err != nil && err != mongo.ErrNoDocuments {
+			lg.Errorf("检查竞赛代码失败: %v", err)
 			return "", err
 		}
 		if existingContest != nil {
+			lg.Errorf("竞赛代码已存在: %s", req.ContestCode)
 			return "", errors.New("竞赛代码已存在")
 		}
 	}
@@ -59,6 +73,7 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 			// 验证题目ID是否有效
 			_, err := primitive.ObjectIDFromHex(p.ProblemID)
 			if err != nil {
+				lg.Errorf("无效的题目ID: %s, 错误: %v", p.ProblemID, err)
 				return "", errors.New("无效的题目ID: " + p.ProblemID)
 			}
 			// 设置默认值
@@ -75,9 +90,13 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 	// 转换为Contest对象
 	contest := req.ToContest(userID, userName)
 
+	// 记录最终的竞赛对象
+	lg.Infof("最终创建的竞赛对象: %+v", contest)
+
 	// 创建竞赛
 	contestID, err := s.dao.CreateContest(ctx, contest)
 	if err != nil {
+		lg.Errorf("创建竞赛失败: %v", err)
 		return "", err
 	}
 
@@ -85,7 +104,6 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 	err = s.CreateContestRanking(ctx, contestID)
 	if err != nil {
 		// 记录错误但不影响竞赛创建
-		lg := utils.GetDefaultLogger()
 		lg.Errorf("初始化竞赛排行榜失败: %v", err)
 	}
 
@@ -705,6 +723,79 @@ func (s *Service) ExportContestScore(ctx context.Context, req *dto.ExportContest
 	}
 
 	return csvData, nil
+}
+
+// ApplyJoinContest 学生申请加入竞赛
+func (s *Service) ApplyJoinContest(ctx context.Context, req *dto.ApplyJoinContestReq, studentID, studentName string) error {
+	lg := utils.GetDefaultLogger()
+
+	// 验证竞赛ID
+	contestID, err := primitive.ObjectIDFromHex(req.ContestID)
+	if err != nil {
+		lg.Errorf("无效的竞赛ID: %s, 错误: %v", req.ContestID, err)
+		return errors.New("无效的竞赛ID")
+	}
+
+	// 获取竞赛信息
+	contest, err := s.dao.GetContestByID(ctx, contestID.Hex())
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return errors.New("竞赛不存在或已被删除")
+		}
+		lg.Errorf("获取竞赛失败: %v", err)
+		return err
+	}
+
+	// 检查竞赛是否为私有竞赛
+	if contest.AccessType != utils.ContestAccessPrivate {
+		return errors.New("只能申请加入私有竞赛")
+	}
+
+	// 检查竞赛是否已开始
+	if contest.Status == utils.ContestStatusRunning || contest.Status == utils.ContestStatusEnded {
+		return errors.New("竞赛已开始或已结束，无法申请加入")
+	}
+
+	// 检查是否已经是参赛者
+	isParticipant, err := s.dao.IsContestParticipant(ctx, req.ContestID, studentID)
+	if err != nil {
+		lg.Errorf("检查参赛者失败: %v", err)
+		return err
+	}
+	if isParticipant {
+		return errors.New("您已经是该竞赛的参赛者")
+	}
+
+	// 检查是否已经申请过
+	hasApplied, err := s.dao.HasAppliedContest(ctx, req.ContestID, studentID)
+	if err != nil {
+		lg.Errorf("检查申请记录失败: %v", err)
+		return err
+	}
+	if hasApplied {
+		return errors.New("您已经申请过该竞赛，请等待审核")
+	}
+
+	// 创建申请记录
+	participant := &models.ContestParticipant{
+		ID:          primitive.NewObjectID(),
+		ContestID:   req.ContestID,
+		ContestName: contest.Name,
+		StudentID:   studentID,
+		StudentName: studentName,
+		Status:      utils.ContestParticipantStatusPending, // 待审核状态
+		Ctime:       time.Now().Unix(),
+		Mtime:       time.Now().Unix(),
+	}
+
+	// 保存申请记录
+	_, err = s.dao.CreateContestParticipant(ctx, participant)
+	if err != nil {
+		lg.Errorf("创建申请记录失败: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 // 检查用户是否有权限

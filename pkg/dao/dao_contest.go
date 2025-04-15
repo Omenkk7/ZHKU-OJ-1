@@ -416,3 +416,34 @@ func (d *Dao) GetContestByCode(ctx context.Context, code string) (*models.Contes
 	}
 	return result.(*models.Contest), nil
 }
+
+// CreateContestParticipant 创建竞赛参与者记录
+func (d *Dao) CreateContestParticipant(ctx context.Context, participant *models.ContestParticipant) (string, error) {
+	return d.CreateOne(ctx, contestParticipantTable, participant)
+}
+
+// IsContestParticipant 检查用户是否已是竞赛参与者
+func (d *Dao) IsContestParticipant(ctx context.Context, contestID, studentID string) (bool, error) {
+	count, err := d.mongo.Count(ctx, contestParticipantTable, bson.M{
+		"contest_id": contestID,
+		"student_id": studentID,
+		"status":     utils.ContestParticipantStatusApproved, // 已通过状态
+	})
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// HasAppliedContest 检查用户是否已申请参加竞赛
+func (d *Dao) HasAppliedContest(ctx context.Context, contestID, studentID string) (bool, error) {
+	count, err := d.mongo.Count(ctx, contestParticipantTable, bson.M{
+		"contest_id": contestID,
+		"student_id": studentID,
+		"status":     utils.ContestParticipantStatusPending, // 待审核状态
+	})
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

@@ -30,13 +30,23 @@ func (s *Server) CreateContest(c *gin.Context) {
 	// 解析请求
 	var req dto.CreateContestReq
 	if err := c.ShouldBindJSON(&req); err != nil {
+		lg := utils.GetDefaultLogger()
+		lg.Errorf("解析创建竞赛请求失败: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
 
+	// 添加日志记录请求内容
+	lg := utils.GetDefaultLogger()
+	lg.Infof("创建竞赛请求内容: %+v", req)
+
+	// 确保 access_type 字段正确设置
+	lg.Infof("竞赛访问类型: %d", req.AccessType)
+
 	// 创建竞赛
 	id, err := s.svc.CreateContest(c, &req, userID.(string), userName.(string))
 	if err != nil {
+		lg.Errorf("创建竞赛失败: %v", err)
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
 	}
@@ -475,4 +485,53 @@ func (s *Server) ExportContestScore(c *gin.Context) {
 		utils.FailedResponse(c, http.StatusInternalServerError, errors.New("写入响应失败"))
 		return
 	}
+}
+
+// ApplyJoinContest 学生申请加入竞赛
+func (s *Server) ApplyJoinContest(c *gin.Context) {
+	// 获取用户信息
+	userID, exists := c.Get("userId")
+	if !exists {
+		utils.Unauthorized(c, errors.New("需要登录"))
+		return
+	}
+
+	// 获取用户名
+	userName, exists := c.Get("userName")
+	if !exists {
+		utils.Unauthorized(c, errors.New("需要登录"))
+		return
+	}
+
+	// 解析请求
+	var req dto.ApplyJoinContestReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, err)
+		return
+	}
+
+	// 添加日志记录
+	lg := utils.GetDefaultLogger()
+	lg.Infof("学生申请加入竞赛，学生ID: %s, 竞赛ID: %s", userID.(string), req.ContestID)
+
+	// 申请加入竞赛
+	err := s.svc.ApplyJoinContest(c, &req, userID.(string), userName.(string))
+	if err != nil {
+		lg.Errorf("申请加入竞赛失败: %v", err)
+		switch err.Error() {
+		case "无效的竞赛ID":
+			utils.BadRequest(c, err)
+		case "竞赛不存在或已被删除":
+			utils.FailedResponse(c, http.StatusNotFound, err)
+		case "您已经是该竞赛的参赛者", "您已经申请过该竞赛，请等待审核":
+			utils.BadRequest(c, err)
+		case "只能申请加入私有竞赛", "竞赛已开始或已结束，无法申请加入":
+			utils.BadRequest(c, err)
+		default:
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+		}
+		return
+	}
+
+	utils.SuccessResponse(c, gin.H{"message": "申请已提交，请等待审核"})
 }

@@ -234,6 +234,9 @@ func (s *Server) RegisterContest(r *gin.RouterGroup) {
 		// 导出竞赛成绩
 		contestGroup.GET("/:id/export", s.ExportContestScore) //TODO 未完成
 
+		//申请加入竞赛
+		contestGroup.POST("/apply", s.ApplyJoinContest)
+
 		// 获取竞赛列表
 		contestGroup.GET("/list", s.GetContestList)
 		// 获取竞赛详情
