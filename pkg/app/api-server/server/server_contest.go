@@ -128,6 +128,8 @@ func (s *Server) UpdateContest(c *gin.Context) {
 	// 更新竞赛
 	err := s.svc.UpdateContest(c, id, &req, userID.(string))
 	if err != nil {
+		lg := utils.GetDefaultLogger()
+		lg.Errorf("更新竞赛错误: %v", err)
 		switch err.Error() {
 		case "mongo: no documents in result":
 			utils.FailedResponse(c, http.StatusNotFound, errors.New("竞赛不存在或已被删除"))
