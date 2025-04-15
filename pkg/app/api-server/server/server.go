@@ -91,7 +91,7 @@ func (s *Server) RegisterSubmit(g *gin.RouterGroup) {
 }
 
 func (s *Server) RegisterClass(g *gin.RouterGroup) {
-	classGroup := g.Group("/class").Use(middleware.JWTMiddleware())
+	/*classGroup := g.Group("/class").Use(middleware.JWTMiddleware())
 	{
 		// 班级管理
 		classGroup.POST("", s.createClass)
@@ -126,6 +126,37 @@ func (s *Server) RegisterClass(g *gin.RouterGroup) {
 		classGroup.GET("/:id/members", s.getClassMembers)
 		classGroup.POST("/:id/members", s.addClassMember)
 		classGroup.DELETE("/:id/members", s.removeClassMember)
+	}*/
+	classGroup := g.Group("/class").Use(middleware.JWTMiddleware())
+	{
+		// 班级管理
+		classGroup.POST("", utils.CasbinMiddleware(utils.ObjClass, utils.ActCreate), s.createClass)
+		classGroup.PUT("/:id", s.updateClass)          // 使用自定义权限检查
+		classGroup.DELETE("/:id", s.deleteClass)       // 使用自定义权限检查
+		classGroup.PUT("/:id/archive", s.archiveClass) // 使用自定义权限检查
+		classGroup.GET("/:id", utils.CasbinMiddleware(utils.ObjClass, utils.ActRead), s.getClassByID)
+		classGroup.GET("/code/:code", utils.CasbinMiddleware(utils.ObjClass, utils.ActRead), s.getClassByCode)
+		classGroup.GET("", utils.CasbinMiddleware(utils.ObjClass, utils.ActRead), s.getClassList)
+
+		// 班级学生管理
+		classGroup.POST("/:id/student", s.addStudentToClass)                   // 使用自定义权限检查
+		classGroup.POST("/:id/students", s.batchAddStudentsToClass)            // 使用自定义权限检查
+		classGroup.DELETE("/:id/student/:studentId", s.removeStudentFromClass) // 使用自定义权限检查
+		classGroup.GET("/:id/students", utils.CasbinMiddleware(utils.ObjClassStudent, utils.ActRead), s.getClassStudents)
+
+		// 班级课程管理
+		classGroup.POST("/:id/course", utils.CasbinMiddleware(utils.ObjClassCourse, utils.ActUpdate), s.addCourseToClass)
+		classGroup.DELETE("/:id/course/:courseId", s.removeCourseFromClass)         // 使用自定义权限检查
+		classGroup.PUT("/:id/course/:courseId/status", s.updateCourseStatusInClass) // 使用自定义权限检查
+		classGroup.GET("/course/:courseId", utils.CasbinMiddleware(utils.ObjClassCourse, utils.ActRead), s.getClassesByCourseID)
+
+		// 加入申请管理
+		classGroup.POST("/join", s.createJoinRequest)
+		classGroup.PUT("/join/:id/review", s.reviewJoinRequest) // 使用自定义权限检查
+		classGroup.GET("/join", utils.CasbinMiddleware(utils.ObjJoinRequest, utils.ActRead), s.getJoinRequestList)
+
+		// 学生班级查询
+		classGroup.GET("/student/:studentId", utils.CasbinMiddleware(utils.ObjClass, utils.ActRead), s.getStudentClasses)
 	}
 }
 

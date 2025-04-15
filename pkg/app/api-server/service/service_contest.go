@@ -23,6 +23,36 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 		return "", errors.New("开始时间必须早于结束时间")
 	}
 
+	// 如果没有提供竞赛代码，则自动生成
+	if req.ContestCode == "" {
+		// 生成竞赛代码
+		req.ContestCode = utils.GenerateContestCode(req.ContestType)
+
+		// 检查竞赛代码是否已存在
+		existingContest, err := s.dao.GetContestByCode(ctx, req.ContestCode)
+		if err != nil && err != mongo.ErrNoDocuments {
+			return "", err
+		}
+
+		// 如果竞赛代码已存在，则重新生成
+		for existingContest != nil {
+			req.ContestCode = utils.GenerateContestCode(req.ContestType)
+			existingContest, err = s.dao.GetContestByCode(ctx, req.ContestCode)
+			if err != nil && err != mongo.ErrNoDocuments {
+				return "", err
+			}
+		}
+	} else {
+		// 如果提供了竞赛代码，检查是否已存在
+		existingContest, err := s.dao.GetContestByCode(ctx, req.ContestCode)
+		if err != nil && err != mongo.ErrNoDocuments {
+			return "", err
+		}
+		if existingContest != nil {
+			return "", errors.New("竞赛代码已存在")
+		}
+	}
+
 	// 验证题目
 	if len(req.Problems) > 0 {
 		for i, p := range req.Problems {
@@ -99,7 +129,7 @@ func (s *Service) GetContestByID(ctx context.Context, id string) (*models.Contes
 }
 
 // GetContestList 获取竞赛列表
-func (s *Service) GetContestList(ctx context.Context, req *dto.GetContestListReq) (*dto.ContestListResp, error) {
+func (s *Service) GetContestList(ctx context.Context, req *dto.GetContestListReq, userID string, userRole int) (*dto.ContestListResp, error) {
 	query := bson.M{}
 
 	// 默认过滤已删除的竞赛
@@ -117,11 +147,33 @@ func (s *Service) GetContestList(ctx context.Context, req *dto.GetContestListReq
 	if req.Status > 0 {
 		query["status"] = req.Status
 	}
-	if req.CreatorID != "" {
-		query["creator_id"] = req.CreatorID
-	}
 	if req.AccessType > 0 { // 只有当明确设置为公开(1)时才过滤
 		query["access_type"] = req.AccessType
+	}
+
+	// 根据用户角色添加不同的查询条件
+	if userRole == utils.RoleTeacher {
+		// 教师只能查看自己创建的或参与的竞赛
+		// 使用 $or 查询：创建者是自己 或 成员中包含自己
+		query["$or"] = []bson.M{
+			{"creator_id": userID},
+			{"members.2." + userID: bson.M{"$exists": true}}, // 教师角色为2
+		}
+	} else if userRole == utils.RoleAssistant {
+		// 助教只能查看自己参与的竞赛
+		query["members.3."+userID] = bson.M{"$exists": true} // 助教角色为3
+	} else if userRole == utils.RoleStudent {
+		// 学生只能查看自己参与的竞赛和公开竞赛
+		query["$or"] = []bson.M{
+			{"access_type": 1}, // 公开竞赛
+			{"members.4." + userID: bson.M{"$exists": true}}, // 学生角色为4
+		}
+	}
+	// 管理员和超级管理员可以查看所有竞赛，不需要额外条件
+
+	// 如果明确指定了创建者ID，则覆盖上面的条件
+	if req.CreatorID != "" {
+		query["creator_id"] = req.CreatorID
 	}
 
 	lg := utils.GetDefaultLogger()
@@ -149,34 +201,64 @@ func (s *Service) GetContestList(ctx context.Context, req *dto.GetContestListReq
 
 // UpdateContest 更新竞赛
 func (s *Service) UpdateContest(ctx context.Context, id string, req *dto.UpdateContestReq, userID string) error {
+	lg := utils.GetDefaultLogger()
+
 	// 验证ID
 	contestID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
+		lg.Errorf("无效的竞赛ID: %s, 错误: %v", id, err)
 		return errors.New("无效的竞赛ID")
 	}
+
 	// 获取竞赛
-	contest, err := s.dao.GetContestByID(ctx, id)
+	contest, err := s.dao.GetContestByID(ctx, contestID.Hex())
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return errors.New("竞赛不存在或已被删除")
-		}
+		lg.Errorf("获取竞赛失败: %v", err)
 		return err
 	}
+	if contest == nil {
+		lg.Error("竞赛不存在")
+		return errors.New("竞赛不存在")
+	}
 
+	// 记录当前时间和竞赛开始时间
+	now := time.Now().Unix()
+	lg.Infof("当前时间: %v (%s), 竞赛开始时间: %v (%s)",
+		now, time.Unix(now, 0).Format("2006-01-02 15:04:05"),
+		contest.StartTime, time.Unix(contest.StartTime, 0).Format("2006-01-02 15:04:05"))
+
+	// 记录请求中的开始时间和结束时间
+	if req.StartTime > 0 {
+		startTime := req.StartTime / 1000 // 转换为秒级时间戳
+		lg.Infof("请求中的开始时间: %v (%s)",
+			startTime, time.Unix(startTime, 0).Format("2006-01-02 15:04:05"))
+	}
+	if req.EndTime > 0 {
+		endTime := req.EndTime / 1000 // 转换为秒级时间戳
+		lg.Infof("请求中的结束时间: %v (%s)",
+			endTime, time.Unix(endTime, 0).Format("2006-01-02 15:04:05"))
+	}
+
+	// 验证权限
 	hasPermission, err := s.CheckContestPermission(ctx, id, userID, []int{utils.ContestRoleAdmin, utils.RoleTeacher})
 	if err != nil {
+		lg.Errorf("检查权限失败: %v", err)
 		return err
 	}
 	if !hasPermission {
+		lg.Error("无权限更新此竞赛")
 		return errors.New("无权限更新此竞赛")
 	}
 
-	// 验证状态
-	if contest.Status != utils.ContestStatusNotStart {
-		return errors.New("只能修改未开始的竞赛")
+	// 检查竞赛是否已开始
+	// 修改：只有当竞赛状态为"进行中"或"已结束"时才认为已开始
+	// 不再直接比较时间戳
+	if contest.Status == utils.ContestStatusRunning || contest.Status == utils.ContestStatusEnded {
+		lg.Errorf("不能修改已经开始的竞赛，当前状态: %d", contest.Status)
+		return errors.New("不能修改已经开始的竞赛")
 	}
 
-	// 构建更新对象
+	// 构建更新内容
 	update := bson.M{"mtime": time.Now().Unix()}
 
 	if req.Name != "" {
@@ -185,55 +267,31 @@ func (s *Service) UpdateContest(ctx context.Context, id string, req *dto.UpdateC
 	if req.Description != "" {
 		update["description"] = req.Description
 	}
-	if req.StartTime > 0 && req.EndTime > 0 {
-		if req.StartTime >= req.EndTime {
-			return errors.New("开始时间必须早于结束时间")
-		}
-		update["start_time"] = req.StartTime
-		update["end_time"] = req.EndTime
-	} else if req.StartTime > 0 {
-		if req.StartTime >= contest.EndTime {
-			return errors.New("开始时间必须早于结束时间")
-		}
-		update["start_time"] = req.StartTime
-	} else if req.EndTime > 0 {
-		if contest.StartTime >= req.EndTime {
-			return errors.New("开始时间必须早于结束时间")
-		}
-		update["end_time"] = req.EndTime
+	if req.StartTime > 0 {
+		update["start_time"] = req.StartTime / 1000 // 转换为秒级时间戳
+	}
+	if req.EndTime > 0 {
+		update["end_time"] = req.EndTime / 1000 // 转换为秒级时间戳
 	}
 	if req.ContestType > 0 {
 		update["contest_type"] = req.ContestType
 	}
-	if req.AccessType >= 0 {
+	if req.AccessType > 0 {
 		update["access_type"] = req.AccessType
 	}
-	if req.MaxParticipants >= 0 {
+	if req.MaxParticipants > 0 {
 		update["max_participants"] = req.MaxParticipants
+	}
+	if req.Problems != nil && len(req.Problems) > 0 {
+		update["problems"] = req.Problems
 	}
 	if req.Status > 0 {
 		update["status"] = req.Status
 	}
 
-	// 更新题目
-	if len(req.Problems) > 0 {
-		problems := make([]models.ContestProblem, 0, len(req.Problems))
-		for _, p := range req.Problems {
-			problemID, err := primitive.ObjectIDFromHex(p.ProblemID)
-			if err != nil {
-				return errors.New("无效的题目ID: " + p.ProblemID)
-			}
-			problems = append(problems, models.ContestProblem{
-				ProblemID: problemID.Hex(),
-				Order:     p.Order,
-				Score:     p.Score,
-				Status:    1, // 默认可用
-			})
-		}
-		update["problems"] = problems
-	}
+	lg.Infof("更新内容: %+v", update)
 
-	// 更新到数据库
+	// 更新竞赛
 	return s.dao.UpdateContest(ctx, contestID.Hex(), update)
 }
 
@@ -292,12 +350,24 @@ func (s *Service) ArchiveContest(ctx context.Context, id string, userID string) 
 		return errors.New("无权限归档此竞赛")
 	}
 
-	// 验证状态
-	if contest.Status != utils.ContestStatusEnded {
-		return errors.New("只能归档已结束的竞赛")
+	// 如果竞赛未结束，先将其设置为已结束状态
+	if contest.Status != utils.ContestStatusEnded && contest.Status != utils.ContestStatusArchived {
+		// 更新竞赛状态为已结束
+		err = s.dao.UpdateContestStatus(ctx, contestID.Hex(), utils.ContestStatusEnded)
+		if err != nil {
+			return errors.New("将竞赛设置为已结束状态失败: " + err.Error())
+		}
+
+		// 记录日志
+		log.Printf("竞赛 %s 已自动设置为已结束状态", contestID.Hex())
 	}
 
-	// 更新状态
+	// 如果竞赛已经是归档状态，直接返回成功
+	if contest.Status == utils.ContestStatusArchived {
+		return nil
+	}
+
+	// 更新状态为归档
 	return s.dao.UpdateContestStatus(ctx, contestID.Hex(), utils.ContestStatusArchived)
 }
 

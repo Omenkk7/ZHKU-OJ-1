@@ -65,6 +65,18 @@ func (s *Server) GetContestDetail(c *gin.Context) {
 
 // GetContestList 获取竞赛列表
 func (s *Server) GetContestList(c *gin.Context) {
+	// 获取用户信息
+	var userID string
+	var userRole int
+
+	// 从上下文中获取用户信息
+	if contextUser, exists := c.Get("contextUser"); exists {
+		if user, ok := contextUser.(*utils.ContextUser); ok {
+			userID = user.ID
+			userRole = user.Role
+		}
+	}
+
 	// 解析请求参数
 	var req dto.GetContestListReq
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -81,7 +93,7 @@ func (s *Server) GetContestList(c *gin.Context) {
 	}
 
 	// 获取竞赛列表
-	resp, err := s.svc.GetContestList(c, &req)
+	resp, err := s.svc.GetContestList(c, &req, userID, userRole)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -180,8 +192,6 @@ func (s *Server) ArchiveContest(c *gin.Context) {
 		switch err.Error() {
 		case "mongo: no documents in result":
 			utils.FailedResponse(c, http.StatusNotFound, errors.New("竞赛不存在或已被删除"))
-		case "只能归档已结束的竞赛":
-			utils.FailedResponse(c, http.StatusBadRequest, err)
 		case "无权限归档此竞赛":
 			utils.FailedResponse(c, http.StatusForbidden, err)
 		default:
@@ -189,8 +199,6 @@ func (s *Server) ArchiveContest(c *gin.Context) {
 		}
 		return
 	}
-
-	utils.SuccessResponse(c, nil)
 
 	utils.SuccessResponse(c, nil)
 }

@@ -3,12 +3,14 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"log"
 	"net/http"
 	"strconv"
 	"zhku-oj-server/pkg/app/api-server/dto"
 	"zhku-oj-server/pkg/utils"
 )
 
+/*
 // createClass 创建班级
 func (s *Server) createClass(c *gin.Context) {
 	// contextUser中获取ID
@@ -34,9 +36,49 @@ func (s *Server) createClass(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, resp)
+}*/
+// createClass 创建班级
+func (s *Server) createClass(c *gin.Context) {
+	// contextUser中获取ID和角色
+	var userID string
+	var userRole int
+	if contextUser, exists := c.Get("contextUser"); exists {
+		if user, ok := contextUser.(*utils.ContextUser); ok {
+			userID = user.ID
+			userRole = user.Role
+			// 添加日志输出用户角色
+			log.Printf("创建班级 - 用户ID: %s, 角色ID: %d", userID, userRole)
+		}
+	}
+
+	// 使用Casbin检查权限
+	role := utils.GetRoleName(userRole) // 确保使用正确的函数名
+	log.Printf("用户角色名称: %s", role)      // 添加日志输出角色名称
+
+	if !utils.CheckPermission(role, utils.ObjClass, utils.ActCreate) {
+		log.Printf("权限检查失败 - 角色: %s, 对象: %s, 操作: %s", role, utils.ObjClass, utils.ActCreate)
+		utils.Forbidden(c, utils.ErrNoPermission)
+		return
+	}
+
+	// 解析请求参数
+	var req dto.CreateClassRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, err)
+		return
+	}
+
+	// 调用service层创建班级
+	resp, err := s.svc.CreateClass(c, &req, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, resp)
 }
 
-// updateClass 更新班级
+/*// updateClass 更新班级
 func (s *Server) updateClass(c *gin.Context) {
 	// 获取班级ID
 	classID := c.Param("id")
@@ -70,9 +112,46 @@ func (s *Server) updateClass(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, resp)
+}*/
+// updateClass 更新班级
+func (s *Server) updateClass(c *gin.Context) {
+	// 获取班级ID
+	classID := c.Param("id")
+
+	// 获取当前用户ID和角色
+	userID := c.GetString("userId")
+
+	// 获取用户在班级中的角色
+	userRoles, err := s.svc.GetUserRolesInClass(c, classID, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 使用Casbin检查权限
+	if !utils.CheckClassPermission(c, userRoles, classID, utils.ActUpdate) {
+		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		return
+	}
+
+	// 解析请求参数
+	var req dto.UpdateClassRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, err)
+		return
+	}
+
+	// 调用service层更新班级
+	resp, err := s.svc.UpdateClass(c, classID, &req)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, resp)
 }
 
-// deleteClass 删除班级
+/*// deleteClass 删除班级
 func (s *Server) deleteClass(c *gin.Context) {
 	// 获取班级ID
 	classID := c.Param("id")
@@ -99,15 +178,75 @@ func (s *Server) deleteClass(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, nil)
+}*/
+// deleteClass 删除班级
+func (s *Server) deleteClass(c *gin.Context) {
+	// 获取班级ID
+	classID := c.Param("id")
+
+	// 获取当前用户ID
+	userID := c.GetString("userId")
+
+	// 获取用户在班级中的角色
+	userRoles, err := s.svc.GetUserRolesInClass(c, classID, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 使用Casbin检查权限
+	if !utils.CheckClassPermission(c, userRoles, classID, utils.ActDelete) {
+		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		return
+	}
+
+	// 调用service层删除班级
+	err = s.svc.DeleteClass(c, classID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, nil)
 }
 
-// archiveClass 归档班级
+/*// archiveClass 归档班级
 func (s *Server) archiveClass(c *gin.Context) {
 	// 获取班级ID
 	classID := c.Param("id")
 
 	// 调用service层归档班级
 	err := s.svc.ArchiveClass(c, classID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, nil)
+}*/
+// archiveClass 归档班级
+func (s *Server) archiveClass(c *gin.Context) {
+	// 获取班级ID
+	classID := c.Param("id")
+
+	// 获取当前用户ID
+	userID := c.GetString("userId")
+
+	// 获取用户在班级中的角色
+	userRoles, err := s.svc.GetUserRolesInClass(c, classID, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 使用Casbin检查权限
+	if !utils.CheckClassPermission(c, userRoles, classID, utils.ActArchive) {
+		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		return
+	}
+
+	// 调用service层归档班级
+	err = s.svc.ArchiveClass(c, classID)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -204,7 +343,7 @@ func (s *Server) getClassList(c *gin.Context) {
 	utils.SuccessResponse(c, resp)
 }
 
-// addStudentToClass 添加学生到班级
+/*// addStudentToClass 添加学生到班级
 func (s *Server) addStudentToClass(c *gin.Context) {
 	// 获取班级ID
 	classID := c.Param("id")
@@ -238,9 +377,46 @@ func (s *Server) addStudentToClass(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, resp)
+}*/
+// addStudentToClass 添加学生到班级
+func (s *Server) addStudentToClass(c *gin.Context) {
+	// 获取班级ID
+	classID := c.Param("id")
+
+	// 获取当前用户ID
+	userID := c.GetString("userId")
+
+	// 获取用户在班级中的角色
+	userRoles, err := s.svc.GetUserRolesInClass(c, classID, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 使用Casbin检查权限
+	if !utils.CheckClassPermission(c, userRoles, classID, utils.ActAddMem) {
+		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		return
+	}
+
+	// 解析请求参数
+	var req dto.AddStudentRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, err)
+		return
+	}
+
+	// 调用service层添加学生
+	resp, err := s.svc.AddStudentToClass(c, classID, &req)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, resp)
 }
 
-// batchAddStudentsToClass 批量添加学生到班级
+/*// batchAddStudentsToClass 批量添加学生到班级
 func (s *Server) batchAddStudentsToClass(c *gin.Context) {
 	// 获取班级ID
 	classID := c.Param("id")
@@ -260,9 +436,46 @@ func (s *Server) batchAddStudentsToClass(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, nil)
+}*/
+// batchAddStudentsToClass 批量添加学生到班级
+func (s *Server) batchAddStudentsToClass(c *gin.Context) {
+	// 获取班级ID
+	classID := c.Param("id")
+
+	// 获取当前用户ID
+	userID := c.GetString("userId")
+
+	// 获取用户在班级中的角色
+	userRoles, err := s.svc.GetUserRolesInClass(c, classID, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 使用Casbin检查权限
+	if !utils.CheckClassPermission(c, userRoles, classID, utils.ActAddMem) {
+		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		return
+	}
+
+	// 解析请求参数
+	var req dto.BatchAddStudentsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, err)
+		return
+	}
+
+	// 调用service层批量添加学生
+	err = s.svc.BatchAddStudentsToClass(c, classID, &req)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, nil)
 }
 
-// removeStudentFromClass 从班级移除学生
+/*// removeStudentFromClass 从班级移除学生
 func (s *Server) removeStudentFromClass(c *gin.Context) {
 	// 获取班级ID和学生ID
 	classID := c.Param("id")
@@ -278,6 +491,37 @@ func (s *Server) removeStudentFromClass(c *gin.Context) {
 		return
 	}
 	if !hasPermission {
+		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		return
+	}
+
+	// 调用service层移除学生
+	err = s.svc.RemoveStudentFromClass(c, classID, studentID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, nil)
+}*/
+// removeStudentFromClass 从班级移除学生
+func (s *Server) removeStudentFromClass(c *gin.Context) {
+	// 获取班级ID和学生ID
+	classID := c.Param("id")
+	studentID := c.Param("studentId")
+
+	// 获取当前用户ID
+	userID := c.GetString("userId")
+
+	// 获取用户在班级中的角色
+	userRoles, err := s.svc.GetUserRolesInClass(c, classID, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 使用Casbin检查权限
+	if !utils.CheckClassPermission(c, userRoles, classID, utils.ActRemMem) {
 		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
 		return
 	}
@@ -371,7 +615,7 @@ func (s *Server) addCourseToClass(c *gin.Context) {
 	utils.SuccessResponse(c, nil)
 }
 
-// removeCourseFromClass 从班级移除课程
+/*// removeCourseFromClass 从班级移除课程
 func (s *Server) removeCourseFromClass(c *gin.Context) {
 	// 获取班级ID和课程ID
 	classID := c.Param("id")
@@ -399,9 +643,40 @@ func (s *Server) removeCourseFromClass(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, nil)
+}*/
+// removeCourseFromClass 从班级移除课程
+func (s *Server) removeCourseFromClass(c *gin.Context) {
+	// 获取班级ID和课程ID
+	classID := c.Param("id")
+	courseID := c.Param("courseId")
+
+	// 获取当前用户ID
+	userID := c.GetString("userId")
+
+	// 获取用户在班级中的角色
+	userRoles, err := s.svc.GetUserRolesInClass(c, classID, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 使用Casbin检查权限
+	if !utils.CheckClassPermission(c, userRoles, classID, utils.ActUpdate) {
+		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		return
+	}
+
+	// 调用service层移除课程
+	err = s.svc.RemoveCourseFromClass(c, classID, courseID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, nil)
 }
 
-// updateCourseStatusInClass 更新班级中课程的状态
+/*// updateCourseStatusInClass 更新班级中课程的状态
 func (s *Server) updateCourseStatusInClass(c *gin.Context) {
 	// 获取班级ID和课程ID
 	classID := c.Param("id")
@@ -416,6 +691,44 @@ func (s *Server) updateCourseStatusInClass(c *gin.Context) {
 
 	// 调用service层更新课程状态
 	err := s.svc.UpdateCourseStatusInClass(c, classID, courseID, &req)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, nil)
+}*/
+// updateCourseStatusInClass 更新班级中课程的状态
+func (s *Server) updateCourseStatusInClass(c *gin.Context) {
+	// 获取班级ID和课程ID
+	classID := c.Param("id")
+	courseID := c.Param("courseId")
+
+	// 获取当前用户ID
+	userID := c.GetString("userId")
+
+	// 获取用户在班级中的角色
+	userRoles, err := s.svc.GetUserRolesInClass(c, classID, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 使用Casbin检查权限
+	if !utils.CheckClassPermission(c, userRoles, classID, utils.ActUpdate) {
+		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		return
+	}
+
+	// 解析请求参数
+	var req dto.UpdateCourseStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, err)
+		return
+	}
+
+	// 调用service层更新课程状态
+	err = s.svc.UpdateCourseStatusInClass(c, classID, courseID, &req)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -499,7 +812,7 @@ func (s *Server) createJoinRequest(c *gin.Context) {
 	utils.SuccessResponse(c, resp)
 }
 
-// reviewJoinRequest 审核加入班级申请
+/*// reviewJoinRequest 审核加入班级申请
 func (s *Server) reviewJoinRequest(c *gin.Context) {
 	// 获取申请ID
 	requestID := c.Param("id")
@@ -522,6 +835,50 @@ func (s *Server) reviewJoinRequest(c *gin.Context) {
 	}
 	if !hasPermission {
 		utils.FailedResponse(c, http.StatusForbidden, utils.NoPermissionErr)
+		return
+	}
+
+	// 解析请求参数
+	var req dto.ReviewJoinRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, err)
+		return
+	}
+
+	// 调用service层审核申请
+	resp, err := s.svc.ReviewJoinRequest(c, requestID, &req, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	utils.SuccessResponse(c, resp)
+}*/
+// reviewJoinRequest 审核加入班级申请
+func (s *Server) reviewJoinRequest(c *gin.Context) {
+	// 获取申请ID
+	requestID := c.Param("id")
+
+	// 获取当前用户ID
+	userID := c.GetString("userId")
+
+	// 获取申请信息
+	joinRequest, err := s.svc.GetJoinRequestByID(c, requestID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 获取用户在班级中的角色
+	userRoles, err := s.svc.GetUserRolesInClass(c, joinRequest.ClassID, userID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+
+	// 使用Casbin检查权限
+	if !utils.CheckClassPermission(c, userRoles, joinRequest.ClassID, utils.ActReview) {
+		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
 		return
 	}
 

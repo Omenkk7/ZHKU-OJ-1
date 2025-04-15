@@ -6,7 +6,7 @@ import "zhku-oj-server/pkg/models"
 
 // CreateClassRequest 创建班级请求
 type CreateClassRequest struct {
-	ClassCode   string              `json:"class_code" binding:"required"` // 班级代码
+	ClassCode   string              `json:"class_code"`                    // 班级代码
 	Name        string              `json:"name" binding:"required"`       // 班级名称
 	Department  string              `json:"department" binding:"required"` // 所属院系
 	Description string              `json:"description"`                   // 班级描述

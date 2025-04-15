@@ -10,7 +10,7 @@ import (
 
 // 创建竞赛请求
 type CreateContestReq struct {
-	ContestCode     string                  `json:"contest_code" binding:"required"` // 竞赛代码
+	ContestCode     string                  `json:"contest_code"`                    // 竞赛代码
 	Name            string                  `json:"name" binding:"required"`         // 竞赛名称
 	Description     string                  `json:"description"`                     // 竞赛描述
 	StartTime       int64                   `json:"start_time" binding:"required"`   // 开始时间
@@ -92,8 +92,8 @@ type AuditParticipantReq struct {
 // 获取竞赛排名请求
 type GetContestRankingReq struct {
 	ContestID string `form:"contest_id" binding:"required"` // 竞赛ID
-	Page      int    `form:"page" binding:"required"`       // 页码
-	PageSize  int    `form:"page_size" binding:"required"`  // 每页数量
+	Page      int    `form:"page"`                          // 页码
+	PageSize  int    `form:"page_size"`                     // 每页数量
 }
 
 // 导出竞赛成绩请求

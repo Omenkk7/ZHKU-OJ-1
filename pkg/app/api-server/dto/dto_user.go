@@ -24,6 +24,13 @@ type ReqPostLoginUser struct {
 	Password string `json:"password"`
 }
 
+// 新增登录响应结构体
+type LoginResponse struct {
+	Token    string `json:"token"`    // JWT令牌
+	Username string `json:"username"` // 用户名
+	Role     int32  `json:"role"`     // 用户角色
+}
+
 type ReqUser struct {
 	ID       string   `json:"_id,omitempty" bson:"_id,omitempty"`
 	Username string   `json:"username,omitempty" bson:"username,omitempty"`
