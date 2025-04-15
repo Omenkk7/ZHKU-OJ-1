@@ -5,6 +5,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/context"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
@@ -12,34 +15,74 @@ import (
 
 func (s *Service) MergeTemplate(task interface{}) (code interface{}, err error) {
 	lg := utils.GetDefaultLogger()
-	t := task.(models.LocalTask)
-	lg.Infof("题目id：%v语言为：%v", t.ProblemId, t.Language)
-
-	//1.template集合内查模板，problemID——>模板
-	problemId, _ := primitive.ObjectIDFromHex(t.ProblemId)
-	query := bson.M{
-		"_id": problemId,
+	t, ok := task.(models.LocalTask)
+	if !ok {
+		return "", fmt.Errorf("invalid task type")
 	}
-	daoProblem, err := s.dao.GetOneProblem(context.Background(), query)
-	/*res, err := s.dao.GetOne(context.Background(), dao.ProblemTable, &models.Problem{}, query)*/
+	lg.Infof("题目id：%v 语言为：%v", t.ProblemId, t.Language)
+
+	// 1. 获取题目基本信息
+	problemId, err := primitive.ObjectIDFromHex(t.ProblemId)
 	if err != nil {
-		lg.Info("find template error:", err)
-		return "", err
+		return "", fmt.Errorf("invalid problem id: %v", err)
 	}
 
-	//2.拿到模板后，进行代码的合并—————直接用用户提交的代码，替换掉模板里的#function,去除多余的空格
-	//字面的\n转为真正的换行\n
-	daoProblem.Template = strings.Replace(daoProblem.Template, "\\n", "\n", -1)
-	t.Code = strings.Replace(t.Code, "\\n", "\n", -1)
-	//替换#function为用户写的函数
-	code = strings.TrimSpace(strings.Replace(daoProblem.Template, "#function", t.Code, 1))
+	query := bson.M{"_id": problemId}
+	daoProblem, err := s.dao.GetOneProblem(context.Background(), query)
+	if err != nil {
+		lg.Errorf("find problem error: %v, problemId: %s", err, t.ProblemId)
+		return "", fmt.Errorf("failed to find problem: %v", err)
+	}
 
-	//便于观察模板代码，函数代码，完整代码
+	// 2. 构建模板文件路径
+	cfg, _ := utils.LoadConfig("conf/config.yaml")
+	templateUrlCfg := cfg.GetTemplateUrl()
+	templateDir := filepath.Clean(templateUrlCfg)
+	languageDir := strings.ToLower(t.Language)                  // 统一使用小写避免大小写问题
+	safeTitle := strings.ReplaceAll(daoProblem.Title, " ", "_") // 替换空格为下划线
+	templateFile := filepath.Join(templateDir, languageDir, safeTitle+".txt")
+
+	// 检查模板文件是否存在
+	if _, err := os.Stat(templateFile); os.IsNotExist(err) {
+		lg.Errorf("template file not found: %s", templateFile)
+		return "", fmt.Errorf("template file not found for language: %s", t.Language)
+	}
+
+	// 3. 读取模板文件内容
+	templateContent, err := ioutil.ReadFile(templateFile)
+	if err != nil {
+		lg.Errorf("read template file error: %v, path: %s", err, templateFile)
+		return "", fmt.Errorf("failed to read template file: %v", err)
+	}
+
+	// 4. 处理换行符和合并代码
+	templateStr := string(templateContent)
+	templateStr = strings.ReplaceAll(templateStr, "\\n", "\n")
+	userCode := strings.ReplaceAll(t.Code, "\\n", "\n")
+
+	// 替换模板中的占位符
+	mergedCode := strings.TrimSpace(strings.Replace(templateStr, "#function", userCode, 1))
+
+	// 5. 验证合并后的代码
+	if len(mergedCode) == 0 {
+		lg.Error("merged code is empty")
+		return "", fmt.Errorf("merged code is empty")
+	}
+
+	// 调试输出
 	fmt.Println()
 	fmt.Println()
-	fmt.Println("模板代码：", daoProblem.Template)
-	fmt.Println("函数代码:", t.Code)
-	fmt.Println("完整代码：", code)
+	fmt.Println()
 
-	return code, err
+	lg.Infoln("\n=== 调试信息 ===")
+	lg.Infoln("模板文件路径: %s", templateFile)
+	lg.Infoln("模板代码:\n%s", templateStr)
+	lg.Infoln("用户代码:\n%s", userCode)
+	lg.Infoln("合并后代码:\n%s", mergedCode)
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
+	return mergedCode, nil
 }

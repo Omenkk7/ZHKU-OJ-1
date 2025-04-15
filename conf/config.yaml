@@ -10,9 +10,20 @@ Judge:
     JDK11:
       BaseArgs: "C:\\Program Files\\Java\\jdk-11.0.1\\bin\\java.exe"
       Env: "PATH=C:\\Program Files\\Java\\jdk-11.0.1\\bin"
+  Python:
+    Python310:
+      BaseArgs: "C:\\Users\\43162\\Desktop\\langague\\Python310\\python.exe"
+      Env: "PATH=C:\\Users\\43162\\Desktop\\langague\\Python310"
+  Go:
+    Go1.23.5:
+      BaseArgs: "C:\\Users\\43162\\Desktop\\langague\\go1.23.5\\bin\\go.exe"
+      Env: "PATH=C:\\Users\\43162\\Desktop\\langague\\go1.23.5\\bin"
 Sandbox:
   Url: "http://localhost:5050/run"
   Method: "POST"
 Dify:
   APIKey: "app-N1VW5k8Tuxxb0CyWSUV4oCxN"
   APIURL: "http://localhost/v1"
+
+TemplateUrl: "C:\\Users\\43162\\Desktop\\template"
+TestExampleUrl: "C:\\Users\\43162\\Desktop\\test_example"

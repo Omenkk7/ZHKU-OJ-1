@@ -9,16 +9,13 @@ import (
 	"zhku-oj-server/pkg/utils"
 )
 
-var (
-	cfg, _     = utils.LoadConfig("conf/config.yaml")
-	difyCfg    = cfg.GetDifyConfig()
-	apiKey     = difyCfg.APIKey // D从环境变量读取中间层API密钥
-	difyAPIURL = difyCfg.APIURL // Dify API地址
-)
-
 // proxyRequest 通用的代理请求方法
 func (s *Server) proxyRequest(c *gin.Context, path string) {
 	lg := utils.GetDefaultLogger()
+	cfg, _ := utils.LoadConfig("conf/config.yaml")
+	difyCfg := cfg.GetDifyConfig()
+	apiKey := difyCfg.APIKey     // D从环境变量读取中间层API密钥
+	difyAPIURL := difyCfg.APIURL // Dify API地址
 
 	// 1. 构建目标URL
 	targetURL := difyAPIURL + path
