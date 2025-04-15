@@ -2,6 +2,8 @@ package server
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"zhku-oj-server/pkg/app/api-server/dto"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
@@ -26,18 +28,31 @@ func (s *Server) GetSomeProblem(c *gin.Context) {
 }
 
 // GetOneProblem 条件查询查一个题目
+// GetOneProblem gets a single problem by ID from path variable
 func (s *Server) GetOneProblem(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
-	var problem *models.Problem
-	if err := c.BindJSON(&problem); err != nil {
+
+	// Get ID from path variable
+	id := c.Param("id")
+	if id == "" {
+		utils.BadRequest(c, errors.New("missing problem ID in path"))
 		return
 	}
-	lg.Println("条件查询题目......")
-	//调用service_problem层
+
+	lg.Println("条件查询题目......ID:", id)
+
+	// Create problem with just the ID
+	objectId, _ := primitive.ObjectIDFromHex(id)
+	problem := &models.Problem{
+		ID: objectId,
+	}
+
+	// Call service_problem layer
 	res, err := s.svc.GetOneProblem(problem)
-	//返回结果
+
+	// Return result
 	if err != nil {
-		lg.Errorf("getProbelmList: %v", err)
+		lg.Errorf("getProblem: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
