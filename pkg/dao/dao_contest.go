@@ -401,7 +401,7 @@ func (d *Dao) GetContestsByCreator(ctx context.Context, creatorID string, page, 
 
 // GetPublicContests 获取公开竞赛列表
 func (d *Dao) GetPublicContests(ctx context.Context, page, pageSize int) ([]*models.Contest, int64, error) {
-	return d.GetContestList(ctx, bson.M{"access_type": 1, "status": bson.M{"$ne": 0}}, page, pageSize)
+	return d.GetContestList(ctx, bson.M{"access_type": utils.ContestAccessPublic, "status": bson.M{"$ne": utils.ContestStatusDeleted}}, page, pageSize)
 }
 
 // GetContestByCode 根据竞赛代码获取竞赛

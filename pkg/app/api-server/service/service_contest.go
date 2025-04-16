@@ -165,7 +165,7 @@ func (s *Service) GetContestList(ctx context.Context, req *dto.GetContestListReq
 	if req.Status > 0 {
 		query["status"] = req.Status
 	}
-	if req.AccessType > 0 { // 只有当明确设置为公开(1)时才过滤
+	if req.AccessType > 0 {
 		query["access_type"] = req.AccessType
 	}
 
