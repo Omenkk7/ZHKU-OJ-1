@@ -12,8 +12,15 @@ import (
 
 // createCourse 创建课程
 func (s *Server) createCourse(c *gin.Context) {
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
+
+	// 检查权限，只允许管理员(1)和教师(2)创建课程
+	if userRole != 1 && userRole != 2 {
+		utils.FailedResponse(c, http.StatusInternalServerError, errors.New("只有管理员和教师可以创建课程"))
+		return
+	}
 
 	// 解析请求参数
 	var req dto.CreateCourseRequest
