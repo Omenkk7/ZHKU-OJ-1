@@ -18,20 +18,19 @@ const (
 	AssignmentStatusActive   = 1 // 进行中
 )
 
-// GenerateAssignmentCode 生成作业代码
+// / GenerateAssignmentCode 生成作业代码
 // 格式：ASG + 年月 + 4位随机数字
-// 例如：ASG202504XXXX
 func GenerateAssignmentCode() string {
-	// 初始化随机数生成器
-	rand.Seed(time.Now().UnixNano())
+	// 使用更现代的随机数生成方式
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// 获取当前年月
 	now := time.Now()
 	yearMonth := now.Format("200601") // 格式为YYYYMM
 
 	// 生成4位随机数
-	randomNum := rand.Intn(10000)
+	randomNum := r.Intn(10000)
 
-	// 组合成作业代码
+	// 组合成作业代码，使用简单ASCII字符作为前缀
 	return fmt.Sprintf("ASG%s%04d", yearMonth, randomNum)
 }
