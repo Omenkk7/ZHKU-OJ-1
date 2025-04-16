@@ -248,22 +248,20 @@ func (s *Server) getCourseList(c *gin.Context) {
 
 	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
-	userRole := c.GetInt("userRole")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
 
-	// 如果不是管理员，只能查看自己参与的课程
-	if userRole != utils.RoleAdmin {
-		// 调用service层获取用户参与的课程列表
-		resp, err := s.svc.GetUserCourses(c, userID, page, pageSize, filters, sorts)
-		if err != nil {
-			utils.FailedResponse(c, http.StatusInternalServerError, err)
-			return
-		}
-		utils.SuccessResponse(c, resp)
-		return
+	var resp *utils.RespPageQuery
+	var err error
+
+	// 根据角色进行不同的处理
+	if userRole == utils.RoleAdmin {
+		// 管理员可以查看所有课程
+		resp, err = s.svc.GetCourseList(c, page, pageSize, filters, sorts)
+	} else {
+		// 非管理员只能查看自己参与的课程
+		resp, err = s.svc.GetUserCourses(c, userID, page, pageSize, filters, sorts)
 	}
 
-	// 管理员可以查看所有课程
-	resp, err := s.svc.GetCourseList(c, page, pageSize, filters, sorts)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -280,6 +278,13 @@ func (s *Server) addCourseMember(c *gin.Context) {
 	// 获取当前用户ID
 	userID := c.GetString("userId")
 
+	// 解析请求参数
+	var req dto.AddCourseMemberRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.BadRequest(c, err)
+		return
+	}
+
 	// 检查权限（只有管理员和教师可以添加课程成员）
 	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1, 2})
 	if err != nil {
@@ -287,14 +292,14 @@ func (s *Server) addCourseMember(c *gin.Context) {
 		return
 	}
 	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
 
-	// 解析请求参数
-	var req dto.AddCourseMemberRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.BadRequest(c, err)
+	// 额外检查：教师只能添加学生和助教，不能添加其他教师或管理员
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
+	if userRole == 2 && (req.Role == 1 || req.Role == 2) {
+		utils.Forbidden(c, errors.New("教师只能添加学生和助教"))
 		return
 	}
 
@@ -310,8 +315,11 @@ func (s *Server) addCourseMember(c *gin.Context) {
 
 // removeCourseMember 移除课程成员
 func (s *Server) removeCourseMember(c *gin.Context) {
-	// 获取课程ID
+	// 获取课程ID和用户ID
 	courseID := c.Param("id")
+	memberID := c.Param("member_id")
+	roleStr := c.Query("role")
+	role, _ := strconv.Atoi(roleStr)
 
 	// 获取当前用户ID
 	userID := c.GetString("userId")
@@ -323,19 +331,19 @@ func (s *Server) removeCourseMember(c *gin.Context) {
 		return
 	}
 	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
 
-	// 解析请求参数
-	var req dto.RemoveCourseMemberRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.BadRequest(c, err)
+	// 额外检查：教师只能移除学生和助教，不能移除其他教师或管理员
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
+	if userRole == 2 && (role == 1 || role == 2) {
+		utils.Forbidden(c, errors.New("教师只能移除学生和助教"))
 		return
 	}
 
 	// 调用service层移除课程成员
-	err = s.svc.RemoveCourseMember(c, courseID, req.UserID, req.Role)
+	err = s.svc.RemoveCourseMember(c, courseID, memberID, role)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -352,25 +360,25 @@ func (s *Server) getCourseMembers(c *gin.Context) {
 	// 获取当前用户ID
 	userID := c.GetString("userId")
 
-	// 检查权限（所有课程成员都可以查看成员列表）
-	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1, 2, 3, 4})
+	// 检查权限（管理员、教师和助教可以查看课程成员）
+	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1, 2, 3})
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
 	}
 	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
 
 	// 调用service层获取课程成员
-	members, err := s.svc.GetCourseMembers(c, courseID)
+	resp, err := s.svc.GetCourseMembers(c, courseID)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	utils.SuccessResponse(c, members)
+	utils.SuccessResponse(c, resp)
 }
 
 // createJoinCourseRequest 创建加入课程申请
@@ -404,6 +412,28 @@ func (s *Server) reviewJoinCourseRequest(c *gin.Context) {
 	var req dto.ReviewJoinCourseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.BadRequest(c, err)
+		return
+	}
+
+	// 获取加入请求信息，以便检查关联的课程
+	joinRequest, err := s.svc.GetJoinCourseRequestByID(c, requestID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+	if joinRequest == nil {
+		utils.BadRequest(c, errors.New("加入请求不存在"))
+		return
+	}
+
+	// 检查权限（只有管理员和教师可以审核加入请求）
+	hasPermission, err := s.svc.CheckUserCoursePermission(c, joinRequest.CourseID, userID, []int{1, 2})
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+	if !hasPermission {
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
 

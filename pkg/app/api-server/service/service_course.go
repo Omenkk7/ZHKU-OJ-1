@@ -651,6 +651,21 @@ func (s *Service) convertMemberToResponse(member models.CourseMember) dto.Course
 	}
 }
 
+// GetJoinCourseRequestByID 根据ID获取加入课程申请
+func (s *Service) GetJoinCourseRequestByID(c *gin.Context, requestID string) (*dto.JoinCourseRequestResponse, error) {
+	// 获取申请信息
+	joinRequest, err := s.dao.GetJoinCourseRequestByID(c, requestID)
+	if err != nil {
+		return nil, err
+	}
+	if joinRequest == nil {
+		return nil, errors.New("申请不存在")
+	}
+
+	// 转换为响应对象
+	return s.convertJoinRequestToResponse(joinRequest), nil
+}
+
 // 辅助方法：转换加入申请对象为响应对象
 func (s *Service) convertJoinRequestToResponse(request *models.CourseJoinRequest) *dto.JoinCourseRequestResponse {
 	if request == nil {
