@@ -21,3 +21,14 @@ p, assistant, join_request, read
 p, assistant, join_request, review
 p, student, class, read
 p, student, class_member, read
+p, teacher, course, create
+p, teacher, course, read
+p, teacher, course, update
+p, teacher, courseMember, read
+p, teacher, courseMember, add_mem
+p, teacher, courseMember, rem_mem
+p, teacher, courseRequest, read
+p, teacher, courseRequest, review
+p, assistant, course, read
+p, assistant, courseMember, read
+p, student, course, read

@@ -45,6 +45,12 @@ const (
 	ObjAll          = "*"             // 所有对象
 	ObjUser         = "user"          // 用户
 	ObjAdmin        = "admin"         // 管理员
+
+	ObjCourse        = "course"        // 课程
+	ObjCourseMember  = "courseMember"  // 课程成员
+	ObjCourseStudent = "courseStudent" // 课程学生
+	ObjCourseRequest = "courseRequest" // 课程申请
+
 )
 
 var (
@@ -138,6 +144,25 @@ func addDefaultPolicies(e *casbin.Enforcer) {
 	// 学生权限
 	e.AddPolicy(RBACRoleStudent, ObjClass, ActRead)
 	e.AddPolicy(RBACRoleStudent, ObjClassMember, ActRead)
+
+	//////////////////////////////////////////////////////////课程相关权限
+
+	// 教师权限
+	e.AddPolicy(RBACRoleTeacher, ObjCourse, ActCreate)
+	e.AddPolicy(RBACRoleTeacher, ObjCourse, ActRead)
+	e.AddPolicy(RBACRoleTeacher, ObjCourse, ActUpdate)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseMember, ActRead)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseMember, ActAddMem)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseMember, ActRemMem)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseRequest, ActRead)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseRequest, ActReview)
+
+	// 助教权限
+	e.AddPolicy(RBACRoleAssistant, ObjCourse, ActRead)
+	e.AddPolicy(RBACRoleAssistant, ObjCourseMember, ActRead)
+
+	// 学生权限
+	e.AddPolicy(RBACRoleStudent, ObjCourse, ActRead)
 
 	// 保存策略
 	e.SavePolicy()
