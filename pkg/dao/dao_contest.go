@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -446,4 +447,100 @@ func (d *Dao) HasAppliedContest(ctx context.Context, contestID, studentID string
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// AddProblemsToContest 向竞赛添加题目
+func (d *Dao) AddProblemsToContest(ctx context.Context, contestID string, problemsToAdd []models.ContestProblem) error {
+	objectID, err := primitive.ObjectIDFromHex(contestID)
+	if err != nil {
+		return errors.New("无效的竞赛ID")
+	}
+
+	// 检查题目列表是否为空
+	if len(problemsToAdd) == 0 {
+		return errors.New("要添加的题目列表不能为空")
+	}
+
+	// 构造更新操作
+	update := bson.M{
+		"$push": bson.M{
+			"problems": bson.M{
+				"$each": problemsToAdd,
+			},
+		},
+		"$set": bson.M{ // 同时更新修改时间
+			"mtime": time.Now().Unix(),
+		},
+	}
+
+	// 执行更新
+	_, err = d.mongo.UpdateOne(ctx, contestTable, bson.M{"_id": objectID}, update)
+	if err != nil {
+		return fmt.Errorf("向竞赛添加题目失败: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveProblemsFromContest 从竞赛中移除题目
+func (d *Dao) RemoveProblemsFromContest(ctx context.Context, contestID string, problemIDs []string) error {
+	objectID, err := primitive.ObjectIDFromHex(contestID)
+	if err != nil {
+		return errors.New("无效的竞赛ID")
+	}
+
+	// 检查题目ID列表是否为空
+	if len(problemIDs) == 0 {
+		return errors.New("要移除的题目ID列表不能为空")
+	}
+
+	// 构造更新操作 - 使用$pull操作符移除匹配的题目
+	update := bson.M{
+		"$pull": bson.M{
+			"problems": bson.M{
+				"problem_id": bson.M{
+					"$in": problemIDs,
+				},
+			},
+		},
+	}
+
+	// 执行更新操作
+	_, err = d.Update(ctx, contestTable, bson.M{"_id": objectID}, update)
+	if err != nil {
+		return fmt.Errorf("移除题目失败: %w", err)
+	}
+
+	return nil
+}
+
+// BatchRemoveProblemsFromContest 批量从竞赛移除题目
+func (d *Dao) BatchRemoveProblemsFromContest(ctx context.Context, contestID string, problemIDs []string) error {
+	objectID, err := primitive.ObjectIDFromHex(contestID)
+	if err != nil {
+		return errors.New("无效的竞赛ID")
+	}
+
+	if len(problemIDs) == 0 {
+		return errors.New("要移除的题目ID列表不能为空")
+	}
+
+	// 构造更新操作，使用 $pull 从数组中移除匹配的元素
+	update := bson.M{
+		"$pull": bson.M{
+			"problems": bson.M{
+				"problem_id": bson.M{
+					"$in": problemIDs, // 移除 problem_id 在给定列表中的所有题目
+				},
+			},
+		},
+	}
+
+	// 执行更新
+	// 注意：这里使用 UpdateOne，因为我们是针对单个竞赛文档进行操作
+	_, err = d.mongo.UpdateOne(ctx, contestTable, bson.M{"_id": objectID}, update)
+	if err != nil {
+		return fmt.Errorf("从竞赛移除题目失败: %w", err)
+	}
+	return nil
 }

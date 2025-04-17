@@ -27,10 +27,11 @@ type Contest struct {
 
 // ContestProblem 竞赛题目
 type ContestProblem struct {
-	ProblemID string `json:"problem_id,omitempty" bson:"problem_id,omitempty"` // 题目ID
-	Order     int    `json:"order,omitempty" bson:"order,omitempty"`           // 题目在竞赛中的顺序
-	Score     int    `json:"score,omitempty" bson:"score,omitempty"`           // 题目分值
-	Status    int    `json:"status,omitempty" bson:"status,omitempty"`         // 状态：1-可用，0-不可用(题目被隐藏时)
+	ProblemID string `bson:"problem_id" json:"problem_id"` // 题目ID
+	Title     string `bson:"title" json:"title"`           // 题目标题 (新增)
+	Order     int    `bson:"order" json:"order"`           // 题目在竞赛中的顺序
+	Score     int    `bson:"score" json:"score"`           // 题目分值
+	Status    int    `bson:"status" json:"status"`         // 题目状态：1-正常，0-禁用
 }
 
 // ContestStats 竞赛统计信息

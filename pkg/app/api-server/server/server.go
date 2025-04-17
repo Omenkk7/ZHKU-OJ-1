@@ -223,6 +223,12 @@ func (s *Server) RegisterContest(r *gin.RouterGroup) {
 		// 更新竞赛状态
 		contestGroup.PUT("/:id/status", s.UpdateContestStatus)
 
+		// 添加题目到竞赛
+		contestGroup.POST("/:id/problems", s.AddProblemsToContest)
+
+		//批量移除题目路由
+		contestGroup.DELETE("/:id/problems", s.BatchRemoveProblemsFromContest)
+
 		// 添加参赛者
 		contestGroup.POST("/participant/add", s.AddParticipant)
 		// 批量添加参赛者

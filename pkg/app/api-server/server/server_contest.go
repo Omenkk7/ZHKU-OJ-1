@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -534,4 +535,153 @@ func (s *Server) ApplyJoinContest(c *gin.Context) {
 	}
 
 	utils.SuccessResponse(c, gin.H{"message": "申请已提交，请等待审核"})
+}
+
+// AddProblemsToContest 添加题目到竞赛
+func (s *Server) AddProblemsToContest(c *gin.Context) {
+	lg := utils.GetDefaultLogger()
+
+	//  获取竞赛ID
+	contestID := c.Param("id")
+	if contestID == "" {
+		lg.Warn("请求缺少竞赛ID")
+		utils.BadRequest(c, errors.New("竞赛ID不能为空"))
+		return
+	}
+
+	//  获取用户信息
+	userID, exists := c.Get("userId")
+	if !exists {
+		lg.Warn("无法获取用户ID，需要登录")
+		utils.Unauthorized(c, errors.New("需要登录"))
+		return
+	}
+	userRoleStr, exists := c.Get("userRole")
+	if !exists {
+		lg.Warn("无法获取用户角色，需要登录")
+		utils.Unauthorized(c, errors.New("需要登录"))
+		return
+	}
+	userRole, err := strconv.Atoi(userRoleStr.(string))
+	if err != nil {
+		lg.Errorf("用户角色转换失败: %v", err)
+		utils.FailedResponse(c, http.StatusInternalServerError, errors.New("无效的用户角色"))
+		return
+	}
+
+	//  解析请求体
+	var req dto.AddProblemsToContestReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		lg.Errorf("解析添加题目请求失败: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+
+	// 添加额外验证：确保每个题目都有ID和标题
+	for i, problem := range req.Problems {
+		if problem.ProblemID == "" {
+			lg.Errorf("第 %d 个题目缺少题目ID", i+1)
+			utils.BadRequest(c, fmt.Errorf("第 %d 个题目缺少题目ID", i+1))
+			return
+		}
+		if problem.Title == "" {
+			lg.Errorf("第 %d 个题目缺少题目名称", i+1)
+			utils.BadRequest(c, fmt.Errorf("第 %d 个题目缺少题目名称", i+1))
+			return
+		}
+	}
+
+	//  调用 Service 处理
+	err = s.svc.AddProblemsToContest(c, contestID, &req, userID.(string), userRole)
+	if err != nil {
+		lg.Errorf("调用 Service 添加题目失败: %v", err)
+		// 根据错误类型返回不同的状态码
+		if errors.Is(err, utils.ErrNoPermission) {
+			utils.Forbidden(c, err)
+		} else if err.Error() == "竞赛不存在" || err.Error() == "无效的竞赛ID格式" || err.Error() == "题目列表不能为空" || err.Error() == "无法向已结束或已归档的竞赛添加题目" { // 匹配一些预期的业务错误
+			utils.BadRequest(c, err)
+		} else {
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+		}
+		return
+	}
+
+	//  返回成功响应
+	lg.Infof("成功处理向竞赛 %s 添加题目的请求", contestID)
+	utils.SuccessResponse(c, gin.H{"message": "题目添加成功"})
+}
+
+// BatchRemoveProblemsFromContest 批量从竞赛移除题目 (新增)
+func (s *Server) BatchRemoveProblemsFromContest(c *gin.Context) {
+	lg := utils.GetDefaultLogger()
+
+	//  获取竞赛ID
+	contestID := c.Param("id")
+	if contestID == "" {
+		lg.Warn("请求缺少竞赛ID")
+		utils.BadRequest(c, errors.New("竞赛ID不能为空"))
+		return
+	}
+
+	//  获取用户信息
+	userIDVal, exists := c.Get("userId")
+	if !exists {
+		utils.Unauthorized(c, errors.New("需要登录"))
+		return
+	}
+	userID := userIDVal.(string)
+
+	userRoleVal, exists := c.Get("userRole")
+	if !exists {
+		utils.Unauthorized(c, errors.New("无法获取用户角色信息"))
+		return
+	}
+
+	// 转换用户角色
+	var userRole int
+	switch v := userRoleVal.(type) {
+	case int:
+		userRole = v
+	case float64:
+		userRole = int(v)
+	case string:
+		var err error
+		userRole, err = strconv.Atoi(v)
+		if err != nil {
+			utils.FailedResponse(c, http.StatusInternalServerError, errors.New("用户角色格式无效"))
+			return
+		}
+	default:
+		utils.FailedResponse(c, http.StatusInternalServerError, errors.New("无法识别的用户角色类型"))
+		return
+	}
+
+	//  解析请求体
+	var req dto.BatchRemoveProblemsReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		lg.Errorf("解析批量移除题目请求失败: %v", err)
+		utils.BadRequest(c, err) // 返回具体的绑定错误信息
+		return
+	}
+
+	// 调用 Service 处理
+	err := s.svc.BatchRemoveProblemsFromContest(c.Request.Context(), contestID, &req, userID, userRole)
+	if err != nil {
+		lg.Errorf("Service层从竞赛 %s 移除题目失败: %v", contestID, err)
+		// 根据 Service 返回的错误类型进行不同的响应
+		if errors.Is(err, utils.ErrNoPermission) {
+			utils.Forbidden(c, err)
+		} else if err.Error() == "竞赛不存在" {
+			// 使用 FailedResponse 替代 NotFound
+			utils.FailedResponse(c, http.StatusNotFound, err)
+		} else if err.Error() == "无效的竞赛ID" || err.Error() == "要移除的题目ID列表不能为空" {
+			utils.BadRequest(c, err)
+		} else {
+			utils.FailedResponse(c, http.StatusInternalServerError, errors.New("移除题目时发生内部错误"))
+		}
+		return
+	}
+
+	//  成功响应
+	utils.SuccessResponse(c)
 }

@@ -24,15 +24,16 @@ const (
 
 // 操作常量定义
 const (
-	ActCreate  = "create"  // 创建
-	ActRead    = "read"    // 读取
-	ActUpdate  = "update"  // 更新
-	ActDelete  = "delete"  // 删除
-	ActArchive = "archive" // 归档
-	ActAddMem  = "add_mem" // 添加成员
-	ActRemMem  = "rem_mem" // 移除成员
-	ActReview  = "review"  // 审核
-	ActAll     = "*"       // 所有操作
+	ActCreate     = "create"     // 创建
+	ActRead       = "read"       // 读取
+	ActUpdate     = "update"     // 更新
+	ActDelete     = "delete"     // 删除
+	ActArchive    = "archive"    // 归档
+	ActAddMem     = "add_mem"    // 添加成员
+	ActRemMem     = "rem_mem"    // 移除成员
+	ActReview     = "review"     // 审核
+	ActAll        = "*"          // 所有操作
+	ActAddProblem = "addProblem" // 添加题目到竞赛/作业等
 )
 
 // 资源常量定义
@@ -50,6 +51,7 @@ const (
 	ObjCourseMember  = "courseMember"  // 课程成员
 	ObjCourseStudent = "courseStudent" // 课程学生
 	ObjCourseRequest = "courseRequest" // 课程申请
+	ObjContest       = "contest"       // 竞赛对象
 
 )
 
@@ -163,6 +165,11 @@ func addDefaultPolicies(e *casbin.Enforcer) {
 
 	// 学生权限
 	e.AddPolicy(RBACRoleStudent, ObjCourse, ActRead)
+
+	///////////////////////////////////////////////////竞赛相关权限
+
+	// 教师权限
+	e.AddPolicy(RBACRoleTeacher, ObjContest, ActAddProblem) // 显式添加
 
 	// 保存策略
 	e.SavePolicy()

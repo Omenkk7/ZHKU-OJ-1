@@ -32,3 +32,4 @@ p, teacher, courseRequest, review
 p, assistant, course, read
 p, assistant, courseMember, read
 p, student, course, read
+p, teacher, contest, addProblem
