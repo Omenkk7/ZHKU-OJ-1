@@ -110,6 +110,29 @@ func getFieldId(language string, code string) (fileId string) {
 				},
 			},
 		}
+	case "python":
+		pyCfg, _ := judgeCfg.Python["python310"]
+		requestBody = RequestBody{
+			Cmd: []Cmd{
+				{
+					Args: []string{pyCfg.BaseArgs, "main.py"},
+					Env: []string{pyCfg.Env,
+						"PYTHONHASHSEED=0",
+						"PYTHONIOENCODING=UTF-8"}, //不设置这个的话，go-judge会报错failed to get random numbers to initialize Python
+					Files:       []File{{Content: "1 1"}, {Name: "stdout", Max: 10240000}, {Name: "stderr", Max: 10240000}},
+					CPULimit:    968750000000,
+					MemoryLimit: 1048576000000,
+					ProcLimit:   50,
+					CopyIn: map[string]File{
+						"main.py": {
+							Content: code,
+						},
+					},
+					CopyOut:       []string{"stdout", "stderr"},
+					CopyOutCached: []string{"main.py"},
+				},
+			},
+		}
 	}
 
 	// 将请求体编码为JSON
@@ -156,6 +179,8 @@ func getFieldId(language string, code string) (fileId string) {
 		return response[0].FileIds["a.java"]
 	case "go":
 		return response[0].FileIds["main.go"]
+	case "python":
+		return response[0].FileIds["main.py"]
 	}
 	return ""
 }
@@ -202,6 +227,27 @@ func judge(fileId string, language string, example string) (result string) {
 					ProcLimit:   50,
 					CopyIn: map[string]File{
 						"main.go": {
+							FileId: fileId,
+						},
+					},
+				},
+			},
+		}
+	case "python":
+		pyCfg, _ := judgeCfg.Python["Python310"]
+		requestBody = RequestBody{
+			Cmd: []Cmd{
+				{
+					Args: []string{pyCfg.BaseArgs, "main.py"},
+					Env: []string{pyCfg.Env,
+						"PYTHONHASHSEED=0",
+						"PYTHONIOENCODING=UTF-8"}, //不设置这个的话，go-judge会报错failed to get random numbers to initialize Python
+					Files:       []File{{Content: example}, {Name: "stdout", Max: 10240000}, {Name: "stderr", Max: 10240000}},
+					CPULimit:    9687500000000,
+					MemoryLimit: 10485760000000,
+					ProcLimit:   50,
+					CopyIn: map[string]File{
+						"main.py": {
 							FileId: fileId,
 						},
 					},
