@@ -198,11 +198,12 @@ func (s *Server) GetAssignmentList(c *gin.Context) {
 
 	// 修改 status 参数处理逻辑
 	statusStr := c.Query("status")
-	if statusStr == "" {
+	/*if statusStr == "" {
 		// 当 status 参数为空时，默认设置为 1（进行中）
 		defaultStatus := 1
 		req.Status = &defaultStatus
-	} else if statusStr != "" {
+	}*/
+	if statusStr != "" {
 		status, err := strconv.Atoi(statusStr)
 		if err == nil {
 			req.Status = &status
