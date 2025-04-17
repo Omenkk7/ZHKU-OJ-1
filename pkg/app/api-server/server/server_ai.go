@@ -48,7 +48,7 @@ func (s *Server) proxyRequest(c *gin.Context, path string) {
 
 	// 5. 发送请求
 	client := &http.Client{
-		Timeout: 10 * time.Second,
+		Timeout: 100 * time.Second,
 	}
 	resp, err := client.Do(proxyReq)
 	if err != nil {
