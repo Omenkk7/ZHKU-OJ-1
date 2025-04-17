@@ -76,8 +76,8 @@ func getFieldId(language string, code string) (fileId string) {
 					Args:        []string{jdk11cfg.BaseArgs},
 					Env:         []string{jdk11cfg.Env},
 					Files:       []File{{Content: "1 1"}, {Name: "stdout", Max: 10240000}, {Name: "stderr", Max: 10240000}},
-					CPULimit:    9687500000,
-					MemoryLimit: 10485760000,
+					CPULimit:    968750000000,
+					MemoryLimit: 1048576000000,
 					ProcLimit:   50,
 					CopyIn: map[string]File{
 						"a.java": {
@@ -86,6 +86,27 @@ func getFieldId(language string, code string) (fileId string) {
 					},
 					CopyOut:       []string{"stdout", "stderr"},
 					CopyOutCached: []string{"a.java"},
+				},
+			},
+		}
+	case "go":
+		goCfg, _ := judgeCfg.Go["Go1.23.5"]
+		requestBody = RequestBody{
+			Cmd: []Cmd{
+				{
+					Args:        []string{goCfg.BaseArgs, "run", "main.go"},
+					Env:         []string{goCfg.Env},
+					Files:       []File{{Content: "1 1"}, {Name: "stdout", Max: 10240000}, {Name: "stderr", Max: 10240000}},
+					CPULimit:    968750000000,
+					MemoryLimit: 1048576000000,
+					ProcLimit:   50,
+					CopyIn: map[string]File{
+						"main.go": {
+							Content: code,
+						},
+					},
+					CopyOut:       []string{"stdout", "stderr"},
+					CopyOutCached: []string{"main.go"},
 				},
 			},
 		}
@@ -130,7 +151,13 @@ func getFieldId(language string, code string) (fileId string) {
 		return ""
 	}
 	//返回文件id
-	return response[0].FileIds["a.java"]
+	switch language {
+	case "java":
+		return response[0].FileIds["a.java"]
+	case "go":
+		return response[0].FileIds["main.go"]
+	}
+	return ""
 }
 
 // 判题
@@ -156,6 +183,25 @@ func judge(fileId string, language string, example string) (result string) {
 					ProcLimit:   50,
 					CopyIn: map[string]File{
 						"a.java": {
+							FileId: fileId,
+						},
+					},
+				},
+			},
+		}
+	case "go":
+		goCfg, _ := judgeCfg.Go["Go1.23.5"]
+		requestBody = RequestBody{
+			Cmd: []Cmd{
+				{
+					Args:        []string{goCfg.BaseArgs, "run", "main.go"},
+					Env:         []string{goCfg.Env},
+					Files:       []File{{Content: example}, {Name: "stdout", Max: 10240000}, {Name: "stderr", Max: 10240000}},
+					CPULimit:    9687500000000,
+					MemoryLimit: 10485760000000,
+					ProcLimit:   50,
+					CopyIn: map[string]File{
+						"main.go": {
 							FileId: fileId,
 						},
 					},
