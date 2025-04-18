@@ -32,8 +32,8 @@ func SuccessResponse(c *gin.Context, data ...interface{}) {
 func FailedResponse(c *gin.Context, status int, err error) {
 
 	c.JSON(status, gin.H{
-		//Message: err.Error(), //TODO:这种写法无法将中文的错误原因返回前端，改成下一行
-		Message: err,
+		Message: err.Error(), //TODO:这种写法无法将中文的错误原因返回前端，改成下一行
+		//Message: err,
 	})
 }
 

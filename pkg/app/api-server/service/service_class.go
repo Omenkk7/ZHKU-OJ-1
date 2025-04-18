@@ -230,7 +230,7 @@ func (s *Service) AddStudentToClass(ctx context.Context, classID string, req *dt
 		StudentID:     req.StudentID,
 		StudentName:   req.StudentName,
 		StudentNumber: req.StudentNumber,
-		JoinType:      req.JoinType,
+		JoinType:      1,
 		Status:        1, // 正常状态
 		JoinTime:      time.Now().Unix(),
 		LeaveTime:     nil,
@@ -293,7 +293,7 @@ func (s *Service) BatchAddStudentsToClass(ctx context.Context, classID string, r
 			StudentID:     student.StudentID,
 			StudentName:   student.StudentName,
 			StudentNumber: student.StudentNumber,
-			JoinType:      student.JoinType,
+			JoinType:      1,
 			Status:        1, // 正常状态
 			JoinTime:      now,
 			LeaveTime:     nil,
