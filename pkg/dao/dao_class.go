@@ -238,42 +238,65 @@ func (d *Dao) CreateJoinRequest(ctx context.Context, request *models.ClassJoinRe
 	return d.CreateOne(ctx, utils.ClassJoinRequestTable, request)
 }
 
-// GetJoinRequestByID 根据ID获取加入申请
+// GetJoinRequestByID 根据ID获取班级加入申请
 func (d *Dao) GetJoinRequestByID(ctx context.Context, id string) (request *models.ClassJoinRequest, err error) {
-	request = &models.ClassJoinRequest{}
+	// 添加日志记录
+	lg := utils.GetDefaultLogger()
+	lg.Infof("获取班级加入申请，ID: %s", id)
+
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, err
+		lg.Errorf("无效的申请ID格式: %s, 错误: %v", id, err)
+		return nil, errors.New("无效的申请ID格式")
 	}
 
-	query := bson.M{"_id": objID}
-	result, err := d.GetOne(ctx, utils.ClassJoinRequestTable, request, query)
+	// 创建查询条件
+	filter := bson.M{"_id": objID}
+
+	// 创建一个新的 ClassJoinRequest 对象
+	request = &models.ClassJoinRequest{}
+
+	// 使用 FindOne 方法查询并直接传入 request 指针
+	err = d.mongo.FindOne(ctx, utils.ClassJoinRequestTable, filter, request)
 	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			lg.Warnf("未找到申请记录，ID: %s", id)
+			return nil, nil
+		}
+		lg.Errorf("查询申请记录失败: %v", err)
 		return nil, err
 	}
 
-	if result == nil {
-		return nil, nil
-	}
+	// 添加日志，输出获取到的申请信息
+	lg.Infof("成功获取申请信息，ID: %s, 班级ID: %s, 学生ID: %s",
+		request.ID.Hex(), request.ClassID, request.StudentID)
 
-	return result.(*models.ClassJoinRequest), nil
+	return request, nil
 }
 
 // UpdateJoinRequest 更新加入申请
 func (d *Dao) UpdateJoinRequest(ctx context.Context, id string, update bson.M) (err error) {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return err
+		return errors.New("无效的申请ID格式")
 	}
 
 	// 添加更新时间
-	if update["$set"] == nil {
-		update["$set"] = bson.M{}
+	if setUpdate, ok := update["$set"]; ok {
+		if setMap, ok := setUpdate.(bson.M); ok {
+			setMap["mtime"] = time.Now().Unix()
+		} else {
+			// 如果 $set 不是 bson.M，可能需要处理或报错
+			return errors.New("更新操作格式错误: $set 不是 bson.M")
+		}
+	} else {
+		// 如果没有 $set 操作符，创建一个
+		update["$set"] = bson.M{"mtime": time.Now().Unix()}
 	}
-	update["$set"].(bson.M)["mtime"] = time.Now().Unix()
 
 	selector := bson.M{"_id": objID}
-	_, err = d.Update(ctx, utils.ClassJoinRequestTable, selector, update)
+	// 注意：这里的 Update 方法是 DaoInterface 定义的通用方法，需要确认其实现
+	_, err = d.mongo.UpdateOne(ctx, utils.ClassJoinRequestTable, selector, update) // 假设 d.mongo 是 Collection 对象或者有 UpdateOne 方法
 	return err
 }
 

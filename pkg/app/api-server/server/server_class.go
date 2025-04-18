@@ -892,7 +892,16 @@ func (s *Server) reviewJoinRequest(c *gin.Context) {
 	// 调用service层审核申请
 	resp, err := s.svc.ReviewJoinRequest(c, requestID, &req, userID)
 	if err != nil {
-		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		// 根据错误类型返回不同的HTTP状态码
+		switch err.Error() {
+		case "申请不存在":
+			utils.FailedResponse(c, http.StatusNotFound, err)
+		case "申请已处理":
+			// 对于"申请已处理"的情况，返回400错误而不是500
+			utils.BadRequest(c, err)
+		default:
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+		}
 		return
 	}
 
