@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"github.com/golang-jwt/jwt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -16,13 +15,35 @@ import (
 )
 
 // CreateClass 创建班级
-func (s *Service) CreateClass(ctx context.Context, req *dto.CreateClassRequest, creatorID string) (*dto.ClassResponse, error) { // 检查班级代码是否已存在
-	existingClass, err := s.dao.GetClassByCode(ctx, req.ClassCode)
-	if err != nil {
-		return nil, err
-	}
-	if existingClass != nil {
-		return nil, errors.New("班级代码已存在")
+func (s *Service) CreateClass(ctx context.Context, req *dto.CreateClassRequest, creatorID string) (*dto.ClassResponse, error) {
+	// 如果没有提供班级代码，则自动生成
+	if req.ClassCode == "" {
+		// 生成班级代码
+		req.ClassCode = utils.GenerateClassCode(req.Department)
+
+		// 检查班级代码是否已存在
+		existingClass, err := s.dao.GetClassByCode(ctx, req.ClassCode)
+		if err != nil {
+			return nil, err
+		}
+
+		// 如果班级代码已存在，则重新生成
+		for existingClass != nil {
+			req.ClassCode = utils.GenerateClassCode(req.Department)
+			existingClass, err = s.dao.GetClassByCode(ctx, req.ClassCode)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		// 如果提供了班级代码，检查是否已存在
+		existingClass, err := s.dao.GetClassByCode(ctx, req.ClassCode)
+		if err != nil {
+			return nil, err
+		}
+		if existingClass != nil {
+			return nil, errors.New("班级代码已存在")
+		}
 	}
 
 	// 获取创建者信息
@@ -33,64 +54,14 @@ func (s *Service) CreateClass(ctx context.Context, req *dto.CreateClassRequest, 
 	if creatorID == "" {
 		// 尝试从上下文中获取完整的JWT声明
 		if claims, ok := ctx.Value("claims").(jwt.MapClaims); ok {
-			log.Printf("从上下文获取到JWT声明: %v", claims)
-
-			// 尝试获取用户ID
-			if id, ok := claims["_id"].(string); ok && id != "" {
+			if id, ok := claims["userId"].(string); ok {
 				creatorID = id
-				log.Printf("从JWT声明中获取到用户ID: %s", creatorID)
-			} else if id, ok := claims["id"].(string); ok && id != "" {
-				creatorID = id
-				log.Printf("从JWT声明中获取到用户ID(id字段): %s", creatorID)
-			} else if username, ok := claims["username"].(string); ok && username != "" {
-				// 使用username查询用户
-				log.Printf("从JWT声明中获取到username: %s", username)
-				selector := bson.M{"username": username}
-				creator, err := s.dao.GetOneUser(ctx, selector)
-				if err == nil && creator != nil {
-					creatorID = creator.ID.Hex()
-					log.Printf("通过username查询到用户ID: %s", creatorID)
-				}
-			}
-		}
-
-		// 尝试从上下文中获取username
-		if creatorID == "" {
-			if username, ok := ctx.Value("username").(string); ok && username != "" {
-				log.Printf("从上下文获取到username: %s", username)
-				selector := bson.M{"username": username}
-				creator, err := s.dao.GetOneUser(ctx, selector)
-				if err == nil && creator != nil {
-					creatorID = creator.ID.Hex()
-					log.Printf("通过username查询到用户ID: %s", creatorID)
-				}
+				log.Printf("从JWT中获取到用户ID: %s", creatorID)
 			}
 		}
 	}
 
-	// 如果仍然无法获取有效的creatorID，返回错误
-	if creatorID == "" {
-		return nil, errors.New("无法获取创建者ID，请确保已正确登录")
-	}
-
-	objID, err := primitive.ObjectIDFromHex(creatorID)
-	if err != nil {
-		// 更详细的错误信息
-		return nil, fmt.Errorf("无效的用户ID格式: %s, 错误: %v", creatorID, err)
-	}
-
-	selector := bson.M{
-		"_id": objID,
-	}
-	creator, err := s.dao.GetOneUser(ctx, selector)
-	if err != nil {
-		return nil, err
-	}
-	if creator == nil {
-		return nil, errors.New("创建者不存在")
-	}
-
-	// 创建班级
+	// 创建班级对象
 	class := &models.Class{
 		ClassCode:    req.ClassCode,
 		Name:         req.Name,
@@ -98,26 +69,18 @@ func (s *Service) CreateClass(ctx context.Context, req *dto.CreateClassRequest, 
 		Description:  req.Description,
 		Creator:      creatorID,
 		Courses:      req.Courses,
+		Members:      make(map[string][]models.ClassMember),
 		StudentCount: 0,
 		Status:       1, // 正常状态
-		// 初始化成员字段，将创建者添加为管理员
-		Members: map[string][]models.ClassMember{
-			"1": {
-				{
-					UserID:   creatorID,
-					UserName: creator.Nickname,
-				},
-			},
-		},
 	}
 
-	// 插入数据库
+	// 创建班级
 	id, err := s.dao.CreateClass(ctx, class)
 	if err != nil {
 		return nil, err
 	}
 
-	// 获取创建后的班级
+	// 获取创建后的班级信息
 	createdClass, err := s.dao.GetClassByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -778,25 +741,25 @@ func (s *Service) GetClassMembers(ctx context.Context, classID string) (*dto.Cla
 	return resp, nil
 }
 
-// CheckUserClassPermission 检查用户是否有班级操作权限
-func (s *Service) CheckUserClassPermission(ctx context.Context, classID string, userID string, requiredRoles []int) (bool, error) {
-	// 获取用户在班级中的角色
-	roles, err := s.dao.CheckUserClassRole(ctx, classID, userID)
-	if err != nil {
-		return false, err
-	}
-
-	// 检查用户是否有所需角色
-	for _, role := range roles {
-		for _, requiredRole := range requiredRoles {
-			if role == requiredRole {
-				return true, nil
-			}
-		}
-	}
-
-	return false, nil
-}
+//// CheckUserClassPermission 检查用户是否有班级操作权限
+//func (s *Service) CheckUserClassPermission(ctx context.Context, classID string, userID string, requiredRoles []int) (bool, error) {
+//	// 获取用户在班级中的角色
+//	roles, err := s.dao.CheckUserClassRole(ctx, classID, userID)
+//	if err != nil {
+//		return false, err
+//	}
+//
+//	// 检查用户是否有所需角色
+//	for _, role := range roles {
+//		for _, requiredRole := range requiredRoles {
+//			if role == requiredRole {
+//				return true, nil
+//			}
+//		}
+//	}
+//
+//	return false, nil
+//}
 
 // GetJoinRequestByID 根据ID获取加入申请
 func (s *Service) GetJoinRequestByID(ctx context.Context, requestID string) (*dto.JoinRequestResponse, error) {
@@ -832,4 +795,34 @@ func (s *Service) GetJoinRequestList(ctx context.Context, page, pageSize int, fi
 
 	// 执行查询
 	return s.dao.GetJoinRequestList(ctx, comQuery)
+}
+
+// GetUserRolesInClass 获取用户在班级中的角色
+func (s *Service) GetUserRolesInClass(ctx context.Context, classID, userID string) ([]int, error) {
+	// 检查用户是否是系统管理员
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err == nil {
+		selector := bson.M{
+			"_id": objID,
+		}
+		user, err := s.dao.GetOneUser(ctx, selector)
+		if err == nil && user != nil && user.Role == utils.ClassRoleAdmin {
+			return []int{utils.ClassRoleAdmin}, nil
+		}
+	}
+
+	// 否则查询用户在班级中的角色
+	return s.dao.CheckUserClassRole(ctx, classID, userID)
+}
+
+// CheckUserClassPermission 检查用户在班级中是否有指定权限
+func (s *Service) CheckUserClassPermission(ctx context.Context, classID, userID string, requiredRoles []int) (bool, error) {
+	// 获取用户在班级中的角色
+	userRoles, err := s.GetUserRolesInClass(ctx, classID, userID)
+	if err != nil {
+		return false, err
+	}
+
+	// 检查用户角色是否包含所需角色
+	return utils.CheckRolePermission(userRoles, requiredRoles), nil
 }

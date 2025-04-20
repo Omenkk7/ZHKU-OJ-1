@@ -12,11 +12,23 @@ type ReqPostUser struct {
 	Password string `json:"password"`
 	Email    string `json:"email"`
 	Phone    string `json:"phone"`
+	Role     int32  `json:"role"`     // 用户角色：1-管理员、2-教师、3-助教、4-学生
+	Nickname string `json:"nickname"` // 昵称
+	Class    string `json:"class"`    // 班级
+	Sid      string `json:"sid"`      // 学号
+
 }
 
 type ReqPostLoginUser struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+}
+
+// 新增登录响应结构体
+type LoginResponse struct {
+	Token    string `json:"token"`    // JWT令牌
+	Username string `json:"username"` // 用户名
+	Role     int32  `json:"role"`     // 用户角色
 }
 
 type ReqUser struct {

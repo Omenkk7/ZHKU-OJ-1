@@ -15,20 +15,39 @@ import (
 
 // PostUser 注册 /user
 func (s *Server) PostUser(c *gin.Context) {
-	//打印日志
+	// 打印日志
 	lg := utils.GetDefaultLogger()
 	lg.Info("注册......")
-	//把参数解析到postUser
+
+	// 获取操作者角色
+	var operatorRole int32 = 4 // 默认为学生角色
+
+	// 从上下文中获取用户信息
+	if contextUser, exists := c.Get("contextUser"); exists {
+		if user, ok := contextUser.(*utils.ContextUser); ok {
+			operatorRole = int32(user.Role)
+			lg.Infof("操作者角色: %d", operatorRole)
+		}
+	}
+
+	// 把参数解析到postUser
 	var postUser *dto.ReqPostUser
 	if err := c.BindJSON(&postUser); err != nil {
+		utils.BadRequest(c, err)
 		return
 	}
-	//调用service_user层
 
-	id, err := s.svc.PostUser(postUser)
-	//返回结果
+	// 如果未指定角色，默认为学生角色
+	if postUser.Role == 0 {
+		postUser.Role = 4 // 默认为学生
+	}
+
+	// 调用service_user层
+	id, err := s.svc.PostUser(postUser, operatorRole)
+
+	// 返回结果
 	if err != nil {
-		lg.Errorf("getUserList: %v", err)
+		lg.Errorf("注册用户失败: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
@@ -43,17 +62,18 @@ func (s *Server) Login(c *gin.Context) {
 	//把参数解析到结构体loginUser
 	var loginUser *dto.ReqPostLoginUser
 	if err := c.BindJSON(&loginUser); err != nil {
-		return
-	}
-	//调用service_user层
-	res, err := s.svc.UserLogin(loginUser)
-	//返回结果
-	if err != nil {
-		lg.Errorf("getUserList: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
-	utils.SuccessResponse(c, res)
+	//调用service_user层
+	response, err := s.svc.UserLogin(loginUser)
+	//返回结果
+	if err != nil {
+		lg.Errorf("登录失败: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, response)
 }
 
 // GetOneUser 构造query条件查用户 /:id
@@ -76,7 +96,7 @@ func (s *Server) GetOneUser(c *gin.Context) {
 	utils.SuccessResponse(c, res)
 }
 
-// GetSomeUser 查一堆用户 /
+// GetSomeUser 查一堆用户
 func (s *Server) GetSomeUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	lg.Info("查一堆用户......")
@@ -99,16 +119,30 @@ func (s *Server) PutUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
 	lg.Info("通过id改一个用户......")
 
-	//把参数解析到结构体user
+	// 获取操作者角色
+	var operatorRole int32 = 4 // 默认为学生角色
+
+	// 从上下文中获取用户信息
+	if contextUser, exists := c.Get("contextUser"); exists {
+		if user, ok := contextUser.(*utils.ContextUser); ok {
+			operatorRole = int32(user.Role)
+			lg.Infof("操作者角色: %d", operatorRole)
+		}
+	}
+
+	// 把参数解析到结构体user
 	var reqUser *dto.ReqUser
 	if err := c.BindJSON(&reqUser); err != nil {
+		utils.BadRequest(c, err)
 		return
 	}
-	//调用service_user层
-	res, err := s.svc.UpdateUser(reqUser)
-	//返回结果
+
+	// 调用service_user层
+	res, err := s.svc.UpdateUser(reqUser, operatorRole)
+
+	// 返回结果
 	if err != nil {
-		lg.Errorf("getUserList: %v", err)
+		lg.Errorf("更新用户失败: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}
@@ -118,13 +152,28 @@ func (s *Server) PutUser(c *gin.Context) {
 // DeleteUser 通过id删一个用户 /:id
 func (s *Server) DeleteUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
-	lg.Info("删用户......")
+	lg.Info("通过id删一个用户......")
+
+	// 获取操作者角色
+	var operatorRole int32 = 4 // 默认为学生角色
+
+	// 从上下文中获取用户信息
+	if contextUser, exists := c.Get("contextUser"); exists {
+		if user, ok := contextUser.(*utils.ContextUser); ok {
+			operatorRole = int32(user.Role)
+			lg.Infof("操作者角色: %d", operatorRole)
+		}
+	}
+
+	// 获取要删除的用户ID
 	id := c.Param("id")
-	//调用service_user层
-	res, err := s.svc.DeleteUser(id)
-	//返回结果
+
+	// 调用service_user层
+	res, err := s.svc.DeleteUser(id, operatorRole)
+
+	// 返回结果
 	if err != nil {
-		lg.Errorf("getUserList: %v", err)
+		lg.Errorf("删除用户失败: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}

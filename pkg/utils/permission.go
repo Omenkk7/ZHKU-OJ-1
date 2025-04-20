@@ -4,6 +4,7 @@ import "errors"
 
 // 定义角色常量
 const (
+	RoleSuperAdmin = 0 // 超级管理员
 	ClassRoleAdmin = 1 // 管理员
 	RoleTeacher    = 2 // 教师
 	RoleAssistant  = 3 // 助教

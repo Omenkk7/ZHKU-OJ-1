@@ -74,11 +74,6 @@ const (
 	CourseTable            = "courses"              // 课程表
 	CourseJoinRequestTable = "course_join_requests" // 课程加入申请表
 
-	CourseRoleAdmin     = 1 // 管理员
-	CourseRoleTeacher   = 2 // 教师
-	CourseRoleAssistant = 3 // 助教
-	CourseRoleStudent   = 4 // 学生
-
 	CourseStatusOpen   = 1 // 开放
 	CourseStatusClosed = 0 // 已结课
 
@@ -93,10 +88,7 @@ const (
 // 竞赛相关常量
 const (
 	// 角色常量
-	ContestRoleAdmin   = "1" // 管理员
-	ContestRoleTeacher = "2" // 教师
-	ContestRoleTA      = "3" // 助教
-	ContestRoleStudent = "4" // 学生
+	ContestRoleAdmin = 1 // 管理员
 
 	// 竞赛状态常量
 	ContestStatusDeleted  = 0 // 已删除
