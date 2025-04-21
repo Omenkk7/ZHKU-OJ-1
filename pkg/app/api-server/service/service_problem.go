@@ -65,21 +65,29 @@ func (s *Service) PostProblem(reqProblem *dto.ReqProblem) (err error) {
 		templateJavaUrl = templateCfg + "/java/" + reqProblem.Title + ".txt"
 		templatePythonUrl = templateCfg + "/python/" + reqProblem.Title + ".txt"
 	}
+
+	//生成文本文件
 	if err = writeToFile(testExampleUrl, reqProblem.TestExample); err != nil {
 		lg.Infoln("save file failed", err)
 		return err
 	}
-	if err = writeToFile(templateGoUrl, reqProblem.GoTemplate); err != nil {
-		lg.Infoln("save file failed", err)
-		return err
+	if reqProblem.GoTemplate != "" {
+		if err = writeToFile(templateGoUrl, reqProblem.GoTemplate); err != nil {
+			lg.Infoln("save file failed", err)
+			return err
+		}
 	}
-	if err = writeToFile(templateJavaUrl, reqProblem.JavaTemplate); err != nil {
-		lg.Infoln("save file failed", err)
-		return err
+	if reqProblem.JavaTemplate != "" {
+		if err = writeToFile(templateJavaUrl, reqProblem.JavaTemplate); err != nil {
+			lg.Infoln("save file failed", err)
+			return err
+		}
 	}
-	if err = writeToFile(templatePythonUrl, reqProblem.PythonTemplate); err != nil {
-		lg.Infoln("save file failed", err)
-		return err
+	if reqProblem.PythonTemplate != "" {
+		if err = writeToFile(templatePythonUrl, reqProblem.PythonTemplate); err != nil {
+			lg.Infoln("save file failed", err)
+			return err
+		}
 	}
 
 	fmt.Println("osType:", osType)
