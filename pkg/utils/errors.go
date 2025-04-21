@@ -7,6 +7,11 @@ const (
 	DeleteAdminErr = "不能删除管理员!"
 	DeleteErr      = "删除失败!"
 
+	QueryErr     = "查询失败!"
+	HashErr      = "密码加密失败!"
+	CreateErr    = "创建失败!"
+	UserExistErr = "用户已存在!"
+
 	ConstructingBsonErr = "构造Bson异常!"
 	ServerErr           = "服务器异常!"
 

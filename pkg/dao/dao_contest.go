@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"strconv"
 	"time"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
@@ -147,7 +148,7 @@ func (d *Dao) RemoveParticipant(ctx context.Context, contestID, studentID string
 	}
 
 	// 从竞赛的members字段中删除学生
-	err = d.RemoveMember(ctx, contestID, utils.ContestRoleStudent, studentID)
+	err = d.RemoveMember(ctx, contestID, strconv.Itoa(utils.RoleStudent), studentID)
 	if err != nil {
 		// 记录错误但不中断流程
 		lg := utils.GetDefaultLogger()

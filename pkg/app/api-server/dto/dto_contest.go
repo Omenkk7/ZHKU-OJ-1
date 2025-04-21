@@ -10,7 +10,7 @@ import (
 
 // 创建竞赛请求
 type CreateContestReq struct {
-	ContestCode     string                  `json:"contest_code" binding:"required"` // 竞赛代码
+	ContestCode     string                  `json:"contest_code"`                    // 竞赛代码
 	Name            string                  `json:"name" binding:"required"`         // 竞赛名称
 	Description     string                  `json:"description"`                     // 竞赛描述
 	StartTime       int64                   `json:"start_time" binding:"required"`   // 开始时间
@@ -23,27 +23,26 @@ type CreateContestReq struct {
 
 // 更新竞赛请求
 type UpdateContestReq struct {
-	ID              string                  `json:"id" binding:"required"` // 竞赛ID
-	Name            string                  `json:"name"`                  // 竞赛名称
-	Description     string                  `json:"description"`           // 竞赛描述
-	StartTime       int64                   `json:"start_time"`            // 开始时间
-	EndTime         int64                   `json:"end_time"`              // 结束时间
-	ContestType     int                     `json:"contest_type"`          // 竞赛类型
-	AccessType      int                     `json:"access_type"`           // 参赛规则
-	MaxParticipants int                     `json:"max_participants"`      // 最大参赛人数
-	Problems        []models.ContestProblem `json:"problems"`              // 关联题目列表
-	Status          int                     `json:"status"`                // 竞赛状态
+	Name            string                  `json:"name"`             // 竞赛名称
+	Description     string                  `json:"description"`      // 竞赛描述
+	StartTime       int64                   `json:"start_time"`       // 开始时间
+	EndTime         int64                   `json:"end_time"`         // 结束时间
+	ContestType     int                     `json:"contest_type"`     // 竞赛类型
+	AccessType      int                     `json:"access_type"`      // 参赛规则
+	MaxParticipants int                     `json:"max_participants"` // 最大参赛人数
+	Problems        []models.ContestProblem `json:"problems"`         // 关联题目列表
+	Status          int                     `json:"status"`           // 竞赛状态
 }
 
 // 获取竞赛列表请求
 type GetContestListReq struct {
-	Page        int    `form:"page" binding:"required"`      // 页码
-	PageSize    int    `form:"page_size" binding:"required"` // 每页数量
-	Name        string `form:"name"`                         // 竞赛名称
-	ContestType int    `form:"contest_type"`                 // 竞赛类型
-	Status      int    `form:"status"`                       // 竞赛状态
-	CreatorID   string `form:"creator_id"`                   // 创建者ID
-	AccessType  int    `form:"access_type"`                  // 参赛规则
+	Page        int    `form:"page"`         // 页码
+	PageSize    int    `form:"page_size"`    // 每页数量
+	Name        string `form:"name"`         // 竞赛名称
+	ContestType int    `form:"contest_type"` // 竞赛类型
+	Status      int    `form:"status"`       // 竞赛状态
+	CreatorID   string `form:"creator_id"`   // 创建者ID
+	AccessType  int    `form:"access_type"`  // 参赛规则
 }
 
 // 获取竞赛详情请求
@@ -93,8 +92,8 @@ type AuditParticipantReq struct {
 // 获取竞赛排名请求
 type GetContestRankingReq struct {
 	ContestID string `form:"contest_id" binding:"required"` // 竞赛ID
-	Page      int    `form:"page" binding:"required"`       // 页码
-	PageSize  int    `form:"page_size" binding:"required"`  // 每页数量
+	Page      int    `form:"page"`                          // 页码
+	PageSize  int    `form:"page_size"`                     // 每页数量
 }
 
 // 导出竞赛成绩请求
