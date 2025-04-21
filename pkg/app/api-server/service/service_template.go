@@ -38,9 +38,8 @@ func (s *Service) MergeTemplate(task interface{}) (code interface{}, err error) 
 	cfg, _ := utils.LoadConfig("conf/config.yaml")
 	templateUrlCfg := cfg.GetTemplateUrl()
 	templateDir := filepath.Clean(templateUrlCfg)
-	languageDir := strings.ToLower(t.Language)                  // 统一使用小写避免大小写问题
-	safeTitle := strings.ReplaceAll(daoProblem.Title, " ", "_") // 替换空格为下划线
-	templateFile := filepath.Join(templateDir, languageDir, safeTitle+".txt")
+	languageDir := strings.ToLower(t.Language) // 统一使用小写避免大小写问题
+	templateFile := filepath.Join(templateDir, languageDir, daoProblem.Title+".txt")
 
 	// 检查模板文件是否存在
 	if _, err := os.Stat(templateFile); os.IsNotExist(err) {
