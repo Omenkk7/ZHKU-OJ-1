@@ -93,6 +93,7 @@ func (s *Service) PostProblem(reqProblem *dto.ReqProblem) (err error) {
 	//TODO ————————————————————文件存储和入库，要保证事务性————————————————————————
 	//3.题目不存在，一切正常，构建入库模型
 	//TODO 写一个工具类，动态构建入库模型
+
 	dtoProblem = &models.Problem{
 		ID:            primitive.ObjectID{},
 		Creator:       reqProblem.Creator,

@@ -25,7 +25,11 @@ func (d *Dao) GetProblemList(ctx context.Context, comQuery *utils.CommonQuery) (
 	items = &utils.RespPageQuery{
 		Items: make([]*map[string]interface{}, 0),
 	}
-	//query := bson.M{}
+
+	// 覆盖分页参数以获取所有数据
+	comQuery.PageSize = -1
+	comQuery.PageNum = 1
+
 	opts := utils.BuildMongoOptions(comQuery)
 	lg.Println(opts)
 	lg.Println(comQuery.Filters)
