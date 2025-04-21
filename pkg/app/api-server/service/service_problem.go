@@ -2,14 +2,30 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/context"
+	"os"
+	"path/filepath"
+	"runtime"
 	"time"
 	"zhku-oj-server/pkg/app/api-server/dto"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
 )
+
+// 写入内容到文件
+func writeToFile(filePath string, content string) error { //TODO 写进工具类
+	// 确保目录存在
+	dir := filepath.Dir(filePath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	// 写入文件
+	return os.WriteFile(filePath, []byte(content), 0644)
+}
 
 // PostProblem 新建题目
 func (s *Service) PostProblem(reqProblem *dto.ReqProblem) (err error) {
@@ -28,6 +44,52 @@ func (s *Service) PostProblem(reqProblem *dto.ReqProblem) (err error) {
 		lg.Infof("题目%s已存在", reqProblem.Title)
 		return errors.New(utils.ProblemIsExist)
 	}
+
+	//TODO 5.文件存储  临时采用JSON传输模板和测试用例，加速前后端开发  2025/4/21
+	//templateUrl/ 语言 / title  模板路径
+	//测试用例路径
+	cfg, _ := utils.LoadConfig("conf/config.yaml")
+	testExampleCfg := cfg.GetTestExampleUrl()
+	templateCfg := cfg.GetTemplateUrl()
+
+	testExampleUrl := testExampleCfg + "\\" + reqProblem.Title + ".txt"
+	templateGoUrl := templateCfg + "\\go\\" + reqProblem.Title + ".txt"
+	templateJavaUrl := templateCfg + "\\java\\" + reqProblem.Title + ".txt"
+	templatePythonUrl := templateCfg + "\\python\\" + reqProblem.Title + ".txt"
+
+	//如果环境为linux
+	osType := runtime.GOOS
+	if osType == "linux" {
+		testExampleUrl = testExampleCfg + "/" + reqProblem.Title + ".txt"
+		templateGoUrl = templateCfg + "/go/" + reqProblem.Title + ".txt"
+		templateJavaUrl = templateCfg + "/java/" + reqProblem.Title + ".txt"
+		templatePythonUrl = templateCfg + "/python/" + reqProblem.Title + ".txt"
+	}
+	if err = writeToFile(testExampleUrl, reqProblem.TestExample); err != nil {
+		lg.Infoln("save file failed", err)
+		return err
+	}
+	if err = writeToFile(templateGoUrl, reqProblem.GoTemplate); err != nil {
+		lg.Infoln("save file failed", err)
+		return err
+	}
+	if err = writeToFile(templateJavaUrl, reqProblem.JavaTemplate); err != nil {
+		lg.Infoln("save file failed", err)
+		return err
+	}
+	if err = writeToFile(templatePythonUrl, reqProblem.PythonTemplate); err != nil {
+		lg.Infoln("save file failed", err)
+		return err
+	}
+
+	fmt.Println("osType:", osType)
+	fmt.Println("TemplateUrl:", templateGoUrl)
+	fmt.Println("TemplateJavaUrl:", templateJavaUrl)
+	fmt.Println("TemplatePythonUrl:", templatePythonUrl)
+	fmt.Println("TestExampleUrl:", testExampleUrl)
+
+	reqProblem.URL = testExampleUrl
+
 	//TODO ————————————————————文件存储和入库，要保证事务性————————————————————————
 	//3.题目不存在，一切正常，构建入库模型
 	//TODO 写一个工具类，动态构建入库模型

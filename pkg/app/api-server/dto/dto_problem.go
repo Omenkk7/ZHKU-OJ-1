@@ -15,4 +15,10 @@ type ReqProblem struct {
 	URL           string   `json:"url,omitempty" bson:"url,omitempty"`
 	Ctime         int64    `json:"ctime,omitempty" bson:"ctime,omitempty"`
 	Mtime         int64    `json:"mtime,omitempty" bson:"mtime,omitempty"`
+
+	//新增文件上传的字段，为了加速开发，先暂时使用JSON传输测试用例和不同语言的模板
+	TestExample    string `json:"testExample,omitempty" bson:"testExample,omitempty"`
+	JavaTemplate   string `json:"javaTemplate,omitempty" bson:"javaTemplate,omitempty"`
+	GoTemplate     string `json:"goTemplate,omitempty" bson:"goTemplate,omitempty"`
+	PythonTemplate string `json:"pythonTemplate,omitempty" bson:"pythonTemplate,omitempty"`
 }

@@ -30,8 +30,10 @@ func SuccessResponse(c *gin.Context, data ...interface{}) {
 }
 
 func FailedResponse(c *gin.Context, status int, err error) {
+	// TODO 如果是乱码，应该是解码和编码不一致导致的
+	// TODO 解决方法：需要统一UTF-8；；前端要检查Content-Type: application/json; charset=utf-8
 	c.JSON(status, gin.H{
-		//Message: err.Error(),//TODO:这种写法无法将中文的错误原因返回前端，改成下一行
+		//Message: err.Error(), //TODO:这种写法无法将中文的错误原因返回前端，改成下一行
 		Message: err,
 	})
 }
