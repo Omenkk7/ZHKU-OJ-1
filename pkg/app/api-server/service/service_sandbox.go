@@ -94,8 +94,9 @@ func getFieldId(language string, code string) (fileId string) {
 		requestBody = RequestBody{
 			Cmd: []Cmd{
 				{
-					Args:        []string{goCfg.BaseArgs, "run", "main.go"},
-					Env:         []string{goCfg.Env},
+					Args: []string{goCfg.BaseArgs, "run", "main.go"},
+					//TODO Linux环境，如果是winodws环境，请去掉GOCACHE
+					Env:         []string{goCfg.Env, "GOCACHE=/tmp/go-build"},
 					Files:       []File{{Content: "1 1"}, {Name: "stdout", Max: 10240000}, {Name: "stderr", Max: 10240000}},
 					CPULimit:    968750000000,
 					MemoryLimit: 1048576000000,
@@ -220,7 +221,7 @@ func judge(fileId string, language string, example string) (result string) {
 			Cmd: []Cmd{
 				{
 					Args:        []string{goCfg.BaseArgs, "run", "main.go"},
-					Env:         []string{goCfg.Env},
+					Env:         []string{goCfg.Env, "GOCACHE=/tmp/go-build"},
 					Files:       []File{{Content: example}, {Name: "stdout", Max: 10240000}, {Name: "stderr", Max: 10240000}},
 					CPULimit:    9687500000000,
 					MemoryLimit: 10485760000000,
