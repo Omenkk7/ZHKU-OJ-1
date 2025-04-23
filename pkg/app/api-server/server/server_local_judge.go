@@ -76,7 +76,7 @@ func (lj *LocalJudge) consumer(taskChan chan interface{}) {
 		//TODO 优化方案：直接传送指针，而不是得到code字符串再赋值
 		//合并模板，拿到合并后的完整代码
 		c, err := lj.svc.MergeTemplate(task)
-		if err != nil || c == nil {
+		if err != nil || c == "" {
 			continue
 		}
 		task.Code = c.(string)

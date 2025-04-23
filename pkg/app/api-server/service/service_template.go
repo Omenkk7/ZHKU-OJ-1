@@ -29,7 +29,7 @@ func (s *Service) MergeTemplate(task interface{}) (code interface{}, err error) 
 
 	query := bson.M{"_id": problemId}
 	daoProblem, err := s.dao.GetOneProblem(context.Background(), query)
-	if err != nil {
+	if err != nil || daoProblem == nil {
 		lg.Errorf("find problem error: %v, problemId: %s", err, t.ProblemId)
 		return "", fmt.Errorf("failed to find problem: %v", err)
 	}
