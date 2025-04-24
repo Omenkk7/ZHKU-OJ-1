@@ -230,7 +230,7 @@ func (s *Service) AddStudentToClass(ctx context.Context, classID string, req *dt
 		StudentID:     req.StudentID,
 		StudentName:   req.StudentName,
 		StudentNumber: req.StudentNumber,
-		JoinType:      req.JoinType,
+		JoinType:      1,
 		Status:        1, // 正常状态
 		JoinTime:      time.Now().Unix(),
 		LeaveTime:     nil,
@@ -293,7 +293,7 @@ func (s *Service) BatchAddStudentsToClass(ctx context.Context, classID string, r
 			StudentID:     student.StudentID,
 			StudentName:   student.StudentName,
 			StudentNumber: student.StudentNumber,
-			JoinType:      student.JoinType,
+			JoinType:      1,
 			Status:        1, // 正常状态
 			JoinTime:      now,
 			LeaveTime:     nil,
@@ -421,17 +421,31 @@ func (s *Service) CreateJoinRequest(ctx context.Context, req *dto.JoinClassReque
 
 // ReviewJoinRequest 审核加入班级申请
 func (s *Service) ReviewJoinRequest(ctx context.Context, requestID string, req *dto.ReviewJoinRequest, reviewerID string) (*dto.JoinRequestResponse, error) {
+	// 添加日志记录
+	lg := utils.GetDefaultLogger()
+	lg.Infof("开始审核班级加入申请，申请ID: %s, 审核人ID: %s, 状态: %d", requestID, reviewerID, req.Status)
+
+	// 验证 requestID 是否为有效的 ObjectID
+	_, err := primitive.ObjectIDFromHex(requestID)
+	if err != nil {
+		lg.Errorf("无效的申请ID格式: %s, 错误: %v", requestID, err)
+		return nil, errors.New("无效的申请ID格式")
+	}
+
 	// 获取申请信息
 	joinRequest, err := s.dao.GetJoinRequestByID(ctx, requestID)
 	if err != nil {
+		lg.Errorf("获取申请信息失败: %v", err)
 		return nil, err
 	}
 	if joinRequest == nil {
+		lg.Warnf("申请不存在，ID: %s", requestID)
 		return nil, errors.New("申请不存在")
 	}
 
 	// 检查申请状态
 	if joinRequest.Status != 0 {
+		lg.Warnf("申请已处理，ID: %s, 当前状态: %d", requestID, joinRequest.Status)
 		return nil, errors.New("申请已处理")
 	}
 
@@ -446,13 +460,16 @@ func (s *Service) ReviewJoinRequest(ctx context.Context, requestID string, req *
 		},
 	}
 
+	lg.Infof("更新申请状态，ID: %s, 状态: %d", requestID, req.Status)
 	err = s.dao.UpdateJoinRequest(ctx, requestID, update)
 	if err != nil {
+		lg.Errorf("更新申请状态失败: %v", err)
 		return nil, err
 	}
 
 	// 如果审核通过，添加学生到班级
 	if req.Status == 1 {
+		lg.Infof("审核通过，添加学生到班级，班级ID: %s, 学生ID: %s", joinRequest.ClassID, joinRequest.StudentID)
 		classStudent := &models.ClassStudent{
 			ClassID:       joinRequest.ClassID,
 			StudentID:     joinRequest.StudentID,
@@ -466,36 +483,53 @@ func (s *Service) ReviewJoinRequest(ctx context.Context, requestID string, req *
 
 		_, err = s.dao.AddStudentToClass(ctx, classStudent)
 		if err != nil {
+			lg.Errorf("添加学生到班级失败: %v", err)
+			return nil, err
+		}
+
+		// 将学生添加到班级的members字段中（学生角色ID为4）
+		member := models.ClassMember{
+			UserID:   joinRequest.StudentID,
+			UserName: joinRequest.StudentName,
+		}
+		err = s.dao.AddClassMember(ctx, joinRequest.ClassID, member, 4) // 4表示学生角色
+		if err != nil {
+			lg.Errorf("添加学生到班级members字段失败: %v", err)
 			return nil, err
 		}
 
 		// 更新班级学生数量
+		lg.Infof("更新班级学生数量，班级ID: %s", joinRequest.ClassID)
 		err = s.dao.UpdateClassStudentCount(ctx, joinRequest.ClassID)
 		if err != nil {
+			lg.Errorf("更新班级学生数量失败: %v", err)
 			return nil, err
 		}
 	}
 
-	// 获取更新后的申请信息
-	updatedRequest, err := s.dao.GetJoinRequestByID(ctx, requestID)
-	if err != nil {
-		return nil, err
-	}
+	// 直接使用已有的 joinRequest 对象构建响应，避免再次查询数据库
+	// 更新 joinRequest 对象的相关字段
+	joinRequest.Status = req.Status
+	joinRequest.ReviewerID = reviewerID
+	joinRequest.ReviewMsg = req.ReviewMsg
+	reviewTime := now
+	joinRequest.ReviewTime = &reviewTime
+	joinRequest.Mtime = now
 
 	// 转换为响应DTO
 	return &dto.JoinRequestResponse{
-		ID:            updatedRequest.ID.Hex(),
-		ClassID:       updatedRequest.ClassID,
-		StudentID:     updatedRequest.StudentID,
-		StudentName:   updatedRequest.StudentName,
-		StudentNumber: updatedRequest.StudentNumber,
-		RequestMsg:    updatedRequest.RequestMsg,
-		Status:        updatedRequest.Status,
-		ReviewerID:    updatedRequest.ReviewerID,
-		ReviewMsg:     updatedRequest.ReviewMsg,
-		ReviewTime:    updatedRequest.ReviewTime,
-		CreateTime:    updatedRequest.Ctime,
-		UpdateTime:    updatedRequest.Mtime,
+		ID:            joinRequest.ID.Hex(),
+		ClassID:       joinRequest.ClassID,
+		StudentID:     joinRequest.StudentID,
+		StudentName:   joinRequest.StudentName,
+		StudentNumber: joinRequest.StudentNumber,
+		RequestMsg:    joinRequest.RequestMsg,
+		Status:        joinRequest.Status,
+		ReviewerID:    joinRequest.ReviewerID,
+		ReviewMsg:     joinRequest.ReviewMsg,
+		ReviewTime:    joinRequest.ReviewTime,
+		CreateTime:    joinRequest.Ctime,
+		UpdateTime:    joinRequest.Mtime,
 	}, nil
 }
 

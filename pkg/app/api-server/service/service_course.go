@@ -651,6 +651,21 @@ func (s *Service) convertMemberToResponse(member models.CourseMember) dto.Course
 	}
 }
 
+// GetJoinCourseRequestByID 根据ID获取加入课程申请
+func (s *Service) GetJoinCourseRequestByID(c *gin.Context, requestID string) (*dto.JoinCourseRequestResponse, error) {
+	// 获取申请信息
+	joinRequest, err := s.dao.GetJoinCourseRequestByID(c, requestID)
+	if err != nil {
+		return nil, err
+	}
+	if joinRequest == nil {
+		return nil, errors.New("申请不存在")
+	}
+
+	// 转换为响应对象
+	return s.convertJoinRequestToResponse(joinRequest), nil
+}
+
 // 辅助方法：转换加入申请对象为响应对象
 func (s *Service) convertJoinRequestToResponse(request *models.CourseJoinRequest) *dto.JoinCourseRequestResponse {
 	if request == nil {
@@ -673,3 +688,34 @@ func (s *Service) convertJoinRequestToResponse(request *models.CourseJoinRequest
 		UpdateTime:    request.Mtime,
 	}
 }
+
+/*// CheckUserCourseCasbinPermission 使用Casbin检查用户在课程中的权限
+func (s *Service) CheckUserCourseCasbinPermission(c *gin.Context, courseID string, userID string, obj string, act string) (bool, error) {
+	// 获取用户在课程中的角色
+	roles, err := s.dao.CheckUserCourseRole(c, courseID, userID)
+	if err != nil {
+		return false, err
+	}
+
+	// 如果用户是管理员，直接返回true
+	for _, role := range roles {
+		if role == utils.ClassRoleAdmin {
+			return true, nil
+		}
+	}
+
+	// 将用户角色转换为Casbin角色
+	casbinRoles := make([]string, 0, len(roles))
+	for _, role := range roles {
+		casbinRoles = append(casbinRoles, utils.GetRoleName(role))
+	}
+
+	// 检查每个角色的权限
+	for _, roleName := range casbinRoles {
+		if utils.CheckPermission(roleName, obj, act) {
+			return true, nil
+		}
+	}
+
+	return false, nil
+}*/

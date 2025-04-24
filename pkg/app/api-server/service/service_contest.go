@@ -18,8 +18,18 @@ import (
 
 // CreateContest 创建竞赛
 func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, userID, userName string) (string, error) {
+	lg := utils.GetDefaultLogger()
+	lg.Infof("创建竞赛请求: %+v", req)
+
+	// 验证访问类型
+	if req.AccessType != utils.ContestAccessPublic && req.AccessType != utils.ContestAccessPrivate {
+		lg.Errorf("无效的竞赛访问类型: %d", req.AccessType)
+		return "", fmt.Errorf("无效的竞赛访问类型: %d，只能是1(公开)或2(私有)", req.AccessType)
+	}
+
 	// 验证时间
 	if req.StartTime >= req.EndTime {
+		lg.Errorf("时间验证失败: 开始时间 %d >= 结束时间 %d", req.StartTime, req.EndTime)
 		return "", errors.New("开始时间必须早于结束时间")
 	}
 
@@ -31,6 +41,7 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 		// 检查竞赛代码是否已存在
 		existingContest, err := s.dao.GetContestByCode(ctx, req.ContestCode)
 		if err != nil && err != mongo.ErrNoDocuments {
+			lg.Errorf("检查竞赛代码失败: %v", err)
 			return "", err
 		}
 
@@ -39,6 +50,7 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 			req.ContestCode = utils.GenerateContestCode(req.ContestType)
 			existingContest, err = s.dao.GetContestByCode(ctx, req.ContestCode)
 			if err != nil && err != mongo.ErrNoDocuments {
+				lg.Errorf("检查竞赛代码失败: %v", err)
 				return "", err
 			}
 		}
@@ -46,9 +58,11 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 		// 如果提供了竞赛代码，检查是否已存在
 		existingContest, err := s.dao.GetContestByCode(ctx, req.ContestCode)
 		if err != nil && err != mongo.ErrNoDocuments {
+			lg.Errorf("检查竞赛代码失败: %v", err)
 			return "", err
 		}
 		if existingContest != nil {
+			lg.Errorf("竞赛代码已存在: %s", req.ContestCode)
 			return "", errors.New("竞赛代码已存在")
 		}
 	}
@@ -59,6 +73,7 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 			// 验证题目ID是否有效
 			_, err := primitive.ObjectIDFromHex(p.ProblemID)
 			if err != nil {
+				lg.Errorf("无效的题目ID: %s, 错误: %v", p.ProblemID, err)
 				return "", errors.New("无效的题目ID: " + p.ProblemID)
 			}
 			// 设置默认值
@@ -75,9 +90,13 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 	// 转换为Contest对象
 	contest := req.ToContest(userID, userName)
 
+	// 记录最终的竞赛对象
+	lg.Infof("最终创建的竞赛对象: %+v", contest)
+
 	// 创建竞赛
 	contestID, err := s.dao.CreateContest(ctx, contest)
 	if err != nil {
+		lg.Errorf("创建竞赛失败: %v", err)
 		return "", err
 	}
 
@@ -85,7 +104,6 @@ func (s *Service) CreateContest(ctx context.Context, req *dto.CreateContestReq, 
 	err = s.CreateContestRanking(ctx, contestID)
 	if err != nil {
 		// 记录错误但不影响竞赛创建
-		lg := utils.GetDefaultLogger()
 		lg.Errorf("初始化竞赛排行榜失败: %v", err)
 	}
 
@@ -147,7 +165,7 @@ func (s *Service) GetContestList(ctx context.Context, req *dto.GetContestListReq
 	if req.Status > 0 {
 		query["status"] = req.Status
 	}
-	if req.AccessType > 0 { // 只有当明确设置为公开(1)时才过滤
+	if req.AccessType > 0 {
 		query["access_type"] = req.AccessType
 	}
 
@@ -157,16 +175,16 @@ func (s *Service) GetContestList(ctx context.Context, req *dto.GetContestListReq
 		// 使用 $or 查询：创建者是自己 或 成员中包含自己
 		query["$or"] = []bson.M{
 			{"creator_id": userID},
-			{"members.2." + userID: bson.M{"$exists": true}}, // 教师角色为2
+			{"members." + userID: bson.M{"$exists": true}}, // 教师角色为2
 		}
 	} else if userRole == utils.RoleAssistant {
 		// 助教只能查看自己参与的竞赛
-		query["members.3."+userID] = bson.M{"$exists": true} // 助教角色为3
+		query["members."+userID] = bson.M{"$exists": true} // 助教角色为3
 	} else if userRole == utils.RoleStudent {
 		// 学生只能查看自己参与的竞赛和公开竞赛
 		query["$or"] = []bson.M{
 			{"access_type": 1}, // 公开竞赛
-			{"members.4." + userID: bson.M{"$exists": true}}, // 学生角色为4
+			{"members." + userID: bson.M{"$exists": true}}, // 学生角色为4
 		}
 	}
 	// 管理员和超级管理员可以查看所有竞赛，不需要额外条件
@@ -707,6 +725,79 @@ func (s *Service) ExportContestScore(ctx context.Context, req *dto.ExportContest
 	return csvData, nil
 }
 
+// ApplyJoinContest 学生申请加入竞赛
+func (s *Service) ApplyJoinContest(ctx context.Context, req *dto.ApplyJoinContestReq, studentID, studentName string) error {
+	lg := utils.GetDefaultLogger()
+
+	// 验证竞赛ID
+	contestID, err := primitive.ObjectIDFromHex(req.ContestID)
+	if err != nil {
+		lg.Errorf("无效的竞赛ID: %s, 错误: %v", req.ContestID, err)
+		return errors.New("无效的竞赛ID")
+	}
+
+	// 获取竞赛信息
+	contest, err := s.dao.GetContestByID(ctx, contestID.Hex())
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return errors.New("竞赛不存在或已被删除")
+		}
+		lg.Errorf("获取竞赛失败: %v", err)
+		return err
+	}
+
+	// 检查竞赛是否为私有竞赛
+	if contest.AccessType != utils.ContestAccessPrivate {
+		return errors.New("只能申请加入私有竞赛")
+	}
+
+	// 检查竞赛是否已开始
+	if contest.Status == utils.ContestStatusRunning || contest.Status == utils.ContestStatusEnded {
+		return errors.New("竞赛已开始或已结束，无法申请加入")
+	}
+
+	// 检查是否已经是参赛者
+	isParticipant, err := s.dao.IsContestParticipant(ctx, req.ContestID, studentID)
+	if err != nil {
+		lg.Errorf("检查参赛者失败: %v", err)
+		return err
+	}
+	if isParticipant {
+		return errors.New("您已经是该竞赛的参赛者")
+	}
+
+	// 检查是否已经申请过
+	hasApplied, err := s.dao.HasAppliedContest(ctx, req.ContestID, studentID)
+	if err != nil {
+		lg.Errorf("检查申请记录失败: %v", err)
+		return err
+	}
+	if hasApplied {
+		return errors.New("您已经申请过该竞赛，请等待审核")
+	}
+
+	// 创建申请记录
+	participant := &models.ContestParticipant{
+		ID:          primitive.NewObjectID(),
+		ContestID:   req.ContestID,
+		ContestName: contest.Name,
+		StudentID:   studentID,
+		StudentName: studentName,
+		Status:      utils.ContestParticipantStatusPending, // 待审核状态
+		Ctime:       time.Now().Unix(),
+		Mtime:       time.Now().Unix(),
+	}
+
+	// 保存申请记录
+	_, err = s.dao.CreateContestParticipant(ctx, participant)
+	if err != nil {
+		lg.Errorf("创建申请记录失败: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 // 检查用户是否有权限
 func (s *Service) hasPermission(contest *models.Contest, userID string, allowedRoles []string) bool {
 	// 创建者有权限
@@ -787,4 +878,175 @@ func (s *Service) CheckContestPermission(ctx context.Context, contestID string, 
 	}
 
 	return hasPermission, nil
+}
+
+// AddProblemsToContest 向竞赛添加题目
+func (s *Service) AddProblemsToContest(ctx context.Context, contestID string, req *dto.AddProblemsToContestReq, userID string, userRole int) error {
+	lg := utils.GetDefaultLogger()
+	lg.Infof("用户 %s (角色 %d) 尝试向竞赛 %s 添加题目: %+v", userID, userRole, contestID, req.Problems)
+
+	//  获取竞赛信息
+	contest, err := s.dao.GetContestByID(ctx, contestID)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			lg.Warnf("竞赛 %s 不存在", contestID)
+			return errors.New("竞赛不存在")
+		}
+		lg.Errorf("获取竞赛 %s 失败: %v", contestID, err)
+		return fmt.Errorf("获取竞赛信息失败: %w", err)
+	}
+
+	//  权限检查 (使用 Casbin)
+	roleName := utils.GetRoleName(userRole)
+	canAddProblem := utils.CheckPermission(roleName, utils.ObjContest, utils.ActAddProblem)
+
+	if !canAddProblem {
+		lg.Warnf("用户 %s (角色 %s) Casbin 权限检查失败 (Obj: %s, Act: %s)", userID, roleName, utils.ObjContest, utils.ActAddProblem)
+		return utils.ErrNoPermission
+	}
+
+	// 查看竞赛状态，不许向已结束或已归档的竞赛添加题目
+	if contest.Status == utils.ContestStatusEnded || contest.Status == utils.ContestStatusArchived {
+		lg.Warnf("无法向已结束或已归档的竞赛 %s 添加题目", contestID)
+		return errors.New("无法向已结束或已归档的竞赛添加题目")
+	}
+
+	//  数据验证和处理
+	if len(req.Problems) == 0 {
+		return errors.New("题目列表不能为空")
+	}
+
+	// 获取现有题目ID集合，用于检查重复
+	existingProblemIDs := make(map[string]bool)
+	maxOrder := 0
+	for _, p := range contest.Problems {
+		existingProblemIDs[p.ProblemID] = true
+		if p.Order > maxOrder {
+			maxOrder = p.Order
+		}
+	}
+
+	problemsToAdd := make([]models.ContestProblem, 0, len(req.Problems))
+	for i, p := range req.Problems {
+		// 验证题目ID和题目名称是否为空
+		if p.ProblemID == "" {
+			lg.Errorf("题目ID不能为空")
+			return errors.New("题目ID不能为空")
+		}
+		if p.Title == "" {
+			lg.Errorf("题目名称不能为空")
+			return errors.New("题目名称不能为空")
+		}
+
+		// 验证题目ID格式
+		if _, err := primitive.ObjectIDFromHex(p.ProblemID); err != nil {
+			lg.Errorf("无效的题目ID格式: %s", p.ProblemID)
+			return fmt.Errorf("无效的题目ID格式: %s", p.ProblemID)
+		}
+
+		// 检查题目是否已存在于竞赛中
+		if existingProblemIDs[p.ProblemID] {
+			lg.Warnf("题目 %s 已存在于竞赛 %s 中，跳过添加", p.ProblemID, contestID)
+			continue // 跳过已存在的题目
+		}
+
+		// 检查待添加列表中是否有重复
+		for j := 0; j < i; j++ {
+			if req.Problems[j].ProblemID == p.ProblemID {
+				lg.Warnf("待添加列表中存在重复题目ID: %s", p.ProblemID)
+				return fmt.Errorf("待添加列表中存在重复题目ID: %s", p.ProblemID)
+			}
+		}
+
+		// TODO: 验证 ProblemID 是否在 problems 集合中真实存在
+		//problemExists, err := s.dao.CheckProblemExists(ctx, p.ProblemID)
+		//if err != nil { ... }
+		//if !problemExists { return fmt.Errorf("题目 %s 不存在", p.ProblemID) }
+
+		// 设置默认值和状态
+		newProblem := p
+		if newProblem.Order == 0 {
+			maxOrder++
+			newProblem.Order = maxOrder
+		} else {
+			// 如果指定了顺序，需要检查是否与现有或其他新题目的顺序冲突 (简化处理：暂不处理复杂排序逻辑，仅追加)
+			maxOrder++
+			newProblem.Order = maxOrder // 强制追加顺序
+		}
+		if newProblem.Score == 0 {
+			newProblem.Score = 10 // 默认分值
+		}
+		newProblem.Status = 1 // 默认可用
+
+		problemsToAdd = append(problemsToAdd, newProblem)
+	}
+
+	if len(problemsToAdd) == 0 {
+		lg.Infof("没有新的题目需要添加到竞赛 %s", contestID)
+		return nil // 没有实际需要添加的题目
+	}
+
+	//  调用 DAO 添加题目
+	err = s.dao.AddProblemsToContest(ctx, contestID, problemsToAdd)
+	if err != nil {
+		lg.Errorf("向竞赛 %s 添加题目失败: %v", contestID, err)
+		return fmt.Errorf("添加题目到竞赛失败: %w", err)
+	}
+
+	lg.Infof("成功向竞赛 %s 添加 %d 个题目", contestID, len(problemsToAdd))
+	return nil
+}
+
+// BatchRemoveProblemsFromContest 批量从竞赛移除题目 (新增)
+func (s *Service) BatchRemoveProblemsFromContest(ctx context.Context, contestID string, req *dto.BatchRemoveProblemsReq, userID string, userRole int) error {
+	lg := utils.GetDefaultLogger()
+	lg.Infof("用户 %s (角色 %d) 尝试从竞赛 %s 批量移除题目: %v", userID, userRole, contestID, req.ProblemIDs)
+
+	//  验证竞赛ID
+	_, err := primitive.ObjectIDFromHex(contestID)
+	if err != nil {
+		lg.Errorf("无效的竞赛ID格式: %s, 错误: %v", contestID, err)
+		return errors.New("无效的竞赛ID")
+	}
+
+	//  获取竞赛信息
+	contest, err := s.dao.GetContestByID(ctx, contestID)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			lg.Warnf("尝试移除题目的竞赛 %s 不存在", contestID)
+			return errors.New("竞赛不存在")
+		}
+		lg.Errorf("获取竞赛 %s 信息失败: %v", contestID, err)
+		return fmt.Errorf("获取竞赛信息失败: %w", err)
+	}
+
+	//  权限检查 (超级管理员、普通管理员 或 竞赛创建者/教师)
+	isSuperAdmin := (userRole == utils.RoleSuperAdmin) // 超级管理员
+	isAdmin := (userRole == utils.ClassRoleAdmin)      // 普通管理员 (新增检查)
+	isTeacher := (userRole == utils.RoleTeacher)       // 教师
+	isCreator := (contest.CreatorID == userID)         // 是否为竞赛创建者
+
+	// 超级管理员和普通管理员可以移除任何竞赛的题目
+	// 教师只能移除自己创建的竞赛的题目
+	if !(isSuperAdmin || isAdmin || (isTeacher && isCreator)) { // 修改条件，加入 isAdmin
+		lg.Warnf("用户 %s (角色 %d) 权限不足，无法从竞赛 %s 移除题目", userID, userRole, contestID)
+		return utils.ErrNoPermission // 使用预定义的权限错误
+	}
+
+	//  验证要移除的题目ID列表
+	if len(req.ProblemIDs) == 0 {
+		lg.Warnf("尝试从竞赛 %s 移除题目，但列表为空", contestID)
+		return errors.New("要移除的题目ID列表不能为空")
+	}
+
+	//  调用 DAO 移除题目
+	err = s.dao.BatchRemoveProblemsFromContest(ctx, contestID, req.ProblemIDs)
+	if err != nil {
+		lg.Errorf("从竞赛 %s 移除题目失败: %v", contestID, err)
+		// 不直接返回 DAO 错误，包装一下
+		return fmt.Errorf("从竞赛移除题目时发生错误")
+	}
+
+	lg.Infof("用户 %s 成功从竞赛 %s 移除 %d 个题目", userID, contestID, len(req.ProblemIDs))
+	return nil
 }

@@ -24,15 +24,16 @@ const (
 
 // 操作常量定义
 const (
-	ActCreate  = "create"  // 创建
-	ActRead    = "read"    // 读取
-	ActUpdate  = "update"  // 更新
-	ActDelete  = "delete"  // 删除
-	ActArchive = "archive" // 归档
-	ActAddMem  = "add_mem" // 添加成员
-	ActRemMem  = "rem_mem" // 移除成员
-	ActReview  = "review"  // 审核
-	ActAll     = "*"       // 所有操作
+	ActCreate     = "create"     // 创建
+	ActRead       = "read"       // 读取
+	ActUpdate     = "update"     // 更新
+	ActDelete     = "delete"     // 删除
+	ActArchive    = "archive"    // 归档
+	ActAddMem     = "add_mem"    // 添加成员
+	ActRemMem     = "rem_mem"    // 移除成员
+	ActReview     = "review"     // 审核
+	ActAll        = "*"          // 所有操作
+	ActAddProblem = "addProblem" // 添加题目到竞赛/作业等
 )
 
 // 资源常量定义
@@ -45,6 +46,13 @@ const (
 	ObjAll          = "*"             // 所有对象
 	ObjUser         = "user"          // 用户
 	ObjAdmin        = "admin"         // 管理员
+
+	ObjCourse        = "course"        // 课程
+	ObjCourseMember  = "courseMember"  // 课程成员
+	ObjCourseStudent = "courseStudent" // 课程学生
+	ObjCourseRequest = "courseRequest" // 课程申请
+	ObjContest       = "contest"       // 竞赛对象
+
 )
 
 var (
@@ -138,6 +146,30 @@ func addDefaultPolicies(e *casbin.Enforcer) {
 	// 学生权限
 	e.AddPolicy(RBACRoleStudent, ObjClass, ActRead)
 	e.AddPolicy(RBACRoleStudent, ObjClassMember, ActRead)
+
+	//////////////////////////////////////////////////////////课程相关权限
+
+	// 教师权限
+	e.AddPolicy(RBACRoleTeacher, ObjCourse, ActCreate)
+	e.AddPolicy(RBACRoleTeacher, ObjCourse, ActRead)
+	e.AddPolicy(RBACRoleTeacher, ObjCourse, ActUpdate)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseMember, ActRead)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseMember, ActAddMem)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseMember, ActRemMem)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseRequest, ActRead)
+	e.AddPolicy(RBACRoleTeacher, ObjCourseRequest, ActReview)
+
+	// 助教权限
+	e.AddPolicy(RBACRoleAssistant, ObjCourse, ActRead)
+	e.AddPolicy(RBACRoleAssistant, ObjCourseMember, ActRead)
+
+	// 学生权限
+	e.AddPolicy(RBACRoleStudent, ObjCourse, ActRead)
+
+	///////////////////////////////////////////////////竞赛相关权限
+
+	// 教师权限
+	e.AddPolicy(RBACRoleTeacher, ObjContest, ActAddProblem) // 显式添加
 
 	// 保存策略
 	e.SavePolicy()

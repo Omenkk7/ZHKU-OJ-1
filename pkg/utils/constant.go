@@ -84,20 +84,3 @@ const (
 	AssignmentTable = "assignments" // 作业表
 
 )
-
-// 竞赛相关常量
-const (
-	// 角色常量
-	ContestRoleAdmin = 1 // 管理员
-
-	// 竞赛状态常量
-	ContestStatusDeleted  = 0 // 已删除
-	ContestStatusNotStart = 1 // 未开始
-	ContestStatusRunning  = 2 // 进行中
-	ContestStatusEnded    = 3 // 已结束
-	ContestStatusArchived = 4 // 已归档
-
-	// 参赛规则常量
-	ContestAccessPrivate = 0 // 私有
-	ContestAccessPublic  = 1 // 公开
-)

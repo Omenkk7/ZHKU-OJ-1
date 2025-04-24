@@ -3,6 +3,7 @@ package dao
 import (
 	"context"
 	"errors"
+	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -401,7 +402,7 @@ func (d *Dao) GetContestsByCreator(ctx context.Context, creatorID string, page, 
 
 // GetPublicContests 获取公开竞赛列表
 func (d *Dao) GetPublicContests(ctx context.Context, page, pageSize int) ([]*models.Contest, int64, error) {
-	return d.GetContestList(ctx, bson.M{"access_type": 1, "status": bson.M{"$ne": 0}}, page, pageSize)
+	return d.GetContestList(ctx, bson.M{"access_type": utils.ContestAccessPublic, "status": bson.M{"$ne": utils.ContestStatusDeleted}}, page, pageSize)
 }
 
 // GetContestByCode 根据竞赛代码获取竞赛
@@ -415,4 +416,131 @@ func (d *Dao) GetContestByCode(ctx context.Context, code string) (*models.Contes
 		return nil, mongo.ErrNoDocuments
 	}
 	return result.(*models.Contest), nil
+}
+
+// CreateContestParticipant 创建竞赛参与者记录
+func (d *Dao) CreateContestParticipant(ctx context.Context, participant *models.ContestParticipant) (string, error) {
+	return d.CreateOne(ctx, contestParticipantTable, participant)
+}
+
+// IsContestParticipant 检查用户是否已是竞赛参与者
+func (d *Dao) IsContestParticipant(ctx context.Context, contestID, studentID string) (bool, error) {
+	count, err := d.mongo.Count(ctx, contestParticipantTable, bson.M{
+		"contest_id": contestID,
+		"student_id": studentID,
+		"status":     utils.ContestParticipantStatusApproved, // 已通过状态
+	})
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// HasAppliedContest 检查用户是否已申请参加竞赛
+func (d *Dao) HasAppliedContest(ctx context.Context, contestID, studentID string) (bool, error) {
+	count, err := d.mongo.Count(ctx, contestParticipantTable, bson.M{
+		"contest_id": contestID,
+		"student_id": studentID,
+		"status":     utils.ContestParticipantStatusPending, // 待审核状态
+	})
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// AddProblemsToContest 向竞赛添加题目
+func (d *Dao) AddProblemsToContest(ctx context.Context, contestID string, problemsToAdd []models.ContestProblem) error {
+	objectID, err := primitive.ObjectIDFromHex(contestID)
+	if err != nil {
+		return errors.New("无效的竞赛ID")
+	}
+
+	// 检查题目列表是否为空
+	if len(problemsToAdd) == 0 {
+		return errors.New("要添加的题目列表不能为空")
+	}
+
+	// 构造更新操作
+	update := bson.M{
+		"$push": bson.M{
+			"problems": bson.M{
+				"$each": problemsToAdd,
+			},
+		},
+		"$set": bson.M{ // 同时更新修改时间
+			"mtime": time.Now().Unix(),
+		},
+	}
+
+	// 执行更新
+	_, err = d.mongo.UpdateOne(ctx, contestTable, bson.M{"_id": objectID}, update)
+	if err != nil {
+		return fmt.Errorf("向竞赛添加题目失败: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveProblemsFromContest 从竞赛中移除题目
+func (d *Dao) RemoveProblemsFromContest(ctx context.Context, contestID string, problemIDs []string) error {
+	objectID, err := primitive.ObjectIDFromHex(contestID)
+	if err != nil {
+		return errors.New("无效的竞赛ID")
+	}
+
+	// 检查题目ID列表是否为空
+	if len(problemIDs) == 0 {
+		return errors.New("要移除的题目ID列表不能为空")
+	}
+
+	// 构造更新操作 - 使用$pull操作符移除匹配的题目
+	update := bson.M{
+		"$pull": bson.M{
+			"problems": bson.M{
+				"problem_id": bson.M{
+					"$in": problemIDs,
+				},
+			},
+		},
+	}
+
+	// 执行更新操作
+	_, err = d.Update(ctx, contestTable, bson.M{"_id": objectID}, update)
+	if err != nil {
+		return fmt.Errorf("移除题目失败: %w", err)
+	}
+
+	return nil
+}
+
+// BatchRemoveProblemsFromContest 批量从竞赛移除题目
+func (d *Dao) BatchRemoveProblemsFromContest(ctx context.Context, contestID string, problemIDs []string) error {
+	objectID, err := primitive.ObjectIDFromHex(contestID)
+	if err != nil {
+		return errors.New("无效的竞赛ID")
+	}
+
+	if len(problemIDs) == 0 {
+		return errors.New("要移除的题目ID列表不能为空")
+	}
+
+	// 构造更新操作，使用 $pull 从数组中移除匹配的元素
+	update := bson.M{
+		"$pull": bson.M{
+			"problems": bson.M{
+				"problem_id": bson.M{
+					"$in": problemIDs, // 移除 problem_id 在给定列表中的所有题目
+				},
+			},
+		},
+	}
+
+	// 执行更新
+	// 注意：这里使用 UpdateOne，因为我们是针对单个竞赛文档进行操作
+	_, err = d.mongo.UpdateOne(ctx, contestTable, bson.M{"_id": objectID}, update)
+	if err != nil {
+		return fmt.Errorf("从竞赛移除题目失败: %w", err)
+	}
+	return nil
 }

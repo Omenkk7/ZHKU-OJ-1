@@ -2,7 +2,6 @@ package service
 
 import (
 	"errors"
-	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"golang.org/x/net/context"
@@ -15,7 +14,6 @@ import (
 
 // CreateAssignment 创建作业
 func (s *Service) CreateAssignment(ctx context.Context, req *dto.CreateAssignmentReq, userID string, userName string) (string, error) {
-	// 检查课程是否存在
 	course, err := s.dao.GetCourseByID(ctx, req.CourseID)
 	if err != nil {
 		return "", err
@@ -40,8 +38,26 @@ func (s *Service) CreateAssignment(ctx context.Context, req *dto.CreateAssignmen
 		return "", errors.New("没有权限创建作业")
 	}
 
-	// 生成作业代码
-	assignmentCode := "ASG" + time.Now().Format("200601") + fmt.Sprintf("%04d", time.Now().Unix()%10000)
+	// 生成作业代码并确保唯一性
+	var assignmentCode string
+	for {
+		// 使用工具函数生成作业代码
+		assignmentCode = utils.GenerateAssignmentCode()
+
+		// 检查作业代码是否已存在
+		existingAssignment, err := s.dao.GetAssignmentByCode(ctx, assignmentCode)
+		if err != nil {
+			return "", errors.New("检查作业代码时出错")
+		}
+
+		// 如果不存在，则使用这个代码
+		if existingAssignment == nil {
+			break
+		}
+
+		// 如果存在，则重新生成
+		log.Printf("作业代码 %s 已存在，重新生成", assignmentCode)
+	}
 
 	// 创建作业对象
 	assignment := &models.Assignment{

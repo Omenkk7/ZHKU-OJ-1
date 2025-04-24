@@ -42,7 +42,6 @@ type AddStudentRequest struct {
 	StudentID     string `json:"student_id" binding:"required"`     // 学生ID
 	StudentName   string `json:"student_name" binding:"required"`   // 学生姓名
 	StudentNumber string `json:"student_number" binding:"required"` // 学号
-	JoinType      int    `json:"join_type" binding:"required"`      // 加入方式
 }
 
 // BatchAddStudentsRequest 批量添加学生请求

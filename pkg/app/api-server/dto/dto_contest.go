@@ -128,6 +128,11 @@ func BindAndValid(c *gin.Context, req interface{}) (int, string) {
 	return http.StatusOK, ""
 }
 
+// ApplyJoinContestReq 学生申请加入竞赛请求
+type ApplyJoinContestReq struct {
+	ContestID string `json:"contest_id" binding:"required"` // 竞赛ID
+}
+
 // 将CreateContestReq转换为Contest
 func (req *CreateContestReq) ToContest(creatorID, creatorName string) *models.Contest {
 	now := time.Now().Unix()
@@ -161,4 +166,14 @@ func (req *CreateContestReq) ToContest(creatorID, creatorName string) *models.Co
 		Ctime:  now,
 		Mtime:  now,
 	}
+}
+
+// 添加题目到竞赛请求
+type AddProblemsToContestReq struct {
+	Problems []models.ContestProblem `json:"problems" binding:"required,dive"` // 要添加的题目列表, dive 验证切片内元素
+}
+
+// 批量移除竞赛题目请求
+type BatchRemoveProblemsReq struct {
+	ProblemIDs []string `json:"problem_ids" binding:"required,min=1"` // 要移除的题目ID列表，不能为空
 }

@@ -12,8 +12,16 @@ import (
 
 // createCourse 创建课程
 func (s *Server) createCourse(c *gin.Context) {
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
+
+	// 使用Casbin检查权限
+	role := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(role, utils.ObjCourse, utils.ActCreate) {
+		utils.Forbidden(c, utils.ErrNoPermission)
+		return
+	}
 
 	// 解析请求参数
 	var req dto.CreateCourseRequest
@@ -47,18 +55,28 @@ func (s *Server) updateCourse(c *gin.Context) {
 	// 获取课程ID
 	courseID := c.Param("id")
 
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
 
-	// 检查权限（只有管理员和教师可以更新课程）
-	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1, 2})
-	if err != nil {
-		utils.FailedResponse(c, http.StatusInternalServerError, err)
+	// 使用Casbin检查权限
+	role := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(role, utils.ObjCourse, utils.ActUpdate) {
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
-	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
-		return
+
+	// 检查用户是否有权限更新此课程（管理员可以更新所有课程，教师只能更新自己的课程）
+	if userRole != utils.ClassRoleAdmin {
+		hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{utils.RoleTeacher})
+		if err != nil {
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+			return
+		}
+		if !hasPermission {
+			utils.Forbidden(c, utils.ErrNoPermission)
+			return
+		}
 	}
 
 	// 解析请求参数
@@ -83,22 +101,18 @@ func (s *Server) deleteCourse(c *gin.Context) {
 	// 获取课程ID
 	courseID := c.Param("id")
 
-	// 获取当前用户ID
-	userID := c.GetString("userId")
+	// 获取当前用户角色
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
 
-	// 检查权限（只有管理员可以删除课程）
-	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1})
-	if err != nil {
-		utils.FailedResponse(c, http.StatusInternalServerError, err)
-		return
-	}
-	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+	// 使用Casbin检查权限（只有管理员可以删除课程）
+	role := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(role, utils.ObjCourse, utils.ActDelete) {
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
 
 	// 调用service层删除课程
-	err = s.svc.DeleteCourse(c, courseID)
+	err := s.svc.DeleteCourse(c, courseID) // 修复：声明变量err
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -112,22 +126,32 @@ func (s *Server) archiveCourse(c *gin.Context) {
 	// 获取课程ID
 	courseID := c.Param("id")
 
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
 
-	// 检查权限（只有管理员可以归档课程）
-	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1})
-	if err != nil {
-		utils.FailedResponse(c, http.StatusInternalServerError, err)
+	// 使用Casbin检查权限（只有管理员和教师可以归档课程）
+	role := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(role, utils.ObjCourse, utils.ActUpdate) {
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
-	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
-		return
+
+	// 检查用户是否有权限归档此课程（管理员可以归档所有课程，教师只能归档自己的课程）
+	if userRole != utils.ClassRoleAdmin {
+		hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{utils.RoleTeacher})
+		if err != nil {
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+			return
+		}
+		if !hasPermission {
+			utils.Forbidden(c, utils.ErrNoPermission)
+			return
+		}
 	}
 
 	// 调用service层归档课程
-	err = s.svc.ArchiveCourse(c, courseID)
+	err := s.svc.ArchiveCourse(c, courseID)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -141,8 +165,16 @@ func (s *Server) getCourse(c *gin.Context) {
 	// 获取课程ID
 	courseID := c.Param("id")
 
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
+
+	// 使用Casbin检查权限
+	role := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(role, utils.ObjCourse, utils.ActRead) {
+		utils.Forbidden(c, utils.ErrNoPermission)
+		return
+	}
 
 	// 调用service层获取课程
 	course, err := s.svc.GetCourseByID(c, courseID)
@@ -151,15 +183,15 @@ func (s *Server) getCourse(c *gin.Context) {
 		return
 	}
 
-	// 检查权限（管理员可以查看所有课程，其他角色只能查看自己参与的课程）
-	if userID != course.Creator {
-		hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1, 2, 3, 4})
+	// 检查用户是否有权限查看此课程（管理员可以查看所有课程，其他角色只能查看自己参与的课程）
+	if userRole != utils.ClassRoleAdmin && userID != course.Creator {
+		hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{utils.RoleTeacher, utils.RoleAssistant, utils.RoleStudent})
 		if err != nil {
 			utils.FailedResponse(c, http.StatusInternalServerError, err)
 			return
 		}
 		if !hasPermission {
-			utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+			utils.Forbidden(c, utils.ErrNoPermission)
 			return
 		}
 	}
@@ -241,22 +273,20 @@ func (s *Server) getCourseList(c *gin.Context) {
 
 	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
-	userRole := c.GetInt("userRole")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
 
-	// 如果不是管理员，只能查看自己参与的课程
-	if userRole != utils.RoleAdmin {
-		// 调用service层获取用户参与的课程列表
-		resp, err := s.svc.GetUserCourses(c, userID, page, pageSize, filters, sorts)
-		if err != nil {
-			utils.FailedResponse(c, http.StatusInternalServerError, err)
-			return
-		}
-		utils.SuccessResponse(c, resp)
-		return
+	var resp *utils.RespPageQuery
+	var err error
+
+	// 根据角色进行不同的处理
+	if userRole == utils.RoleAdmin {
+		// 管理员可以查看所有课程
+		resp, err = s.svc.GetCourseList(c, page, pageSize, filters, sorts)
+	} else {
+		// 非管理员只能查看自己参与的课程
+		resp, err = s.svc.GetUserCourses(c, userID, page, pageSize, filters, sorts)
 	}
 
-	// 管理员可以查看所有课程
-	resp, err := s.svc.GetCourseList(c, page, pageSize, filters, sorts)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -270,17 +300,14 @@ func (s *Server) addCourseMember(c *gin.Context) {
 	// 获取课程ID
 	courseID := c.Param("id")
 
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
 
-	// 检查权限（只有管理员和教师可以添加课程成员）
-	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1, 2})
-	if err != nil {
-		utils.FailedResponse(c, http.StatusInternalServerError, err)
-		return
-	}
-	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+	// 使用Casbin检查权限
+	role := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(role, utils.ObjCourseMember, utils.ActAddMem) {
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
 
@@ -291,8 +318,27 @@ func (s *Server) addCourseMember(c *gin.Context) {
 		return
 	}
 
+	// 检查用户是否有权限添加此课程的成员（管理员可以添加所有课程的成员，教师只能添加自己课程的成员）
+	if userRole != utils.ClassRoleAdmin {
+		hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{utils.RoleTeacher})
+		if err != nil {
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+			return
+		}
+		if !hasPermission {
+			utils.Forbidden(c, utils.ErrNoPermission)
+			return
+		}
+	}
+
+	// 额外检查：教师只能添加学生和助教，不能添加其他教师或管理员
+	if userRole == utils.RoleTeacher && (req.Role == utils.ClassRoleAdmin || req.Role == utils.RoleTeacher) {
+		utils.Forbidden(c, errors.New("教师只能添加学生和助教"))
+		return
+	}
+
 	// 调用service层添加课程成员
-	err = s.svc.AddCourseMember(c, courseID, &req)
+	err := s.svc.AddCourseMember(c, courseID, &req)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -303,32 +349,44 @@ func (s *Server) addCourseMember(c *gin.Context) {
 
 // removeCourseMember 移除课程成员
 func (s *Server) removeCourseMember(c *gin.Context) {
-	// 获取课程ID
+	// 获取课程ID和用户ID
 	courseID := c.Param("id")
+	memberID := c.Param("member_id")
+	roleStr := c.Query("role")
+	role, _ := strconv.Atoi(roleStr)
 
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
 
-	// 检查权限（只有管理员和教师可以移除课程成员）
-	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1, 2})
-	if err != nil {
-		utils.FailedResponse(c, http.StatusInternalServerError, err)
-		return
-	}
-	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
+	// 使用Casbin检查权限
+	roleName := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(roleName, utils.ObjCourseMember, utils.ActRemMem) {
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
 
-	// 解析请求参数
-	var req dto.RemoveCourseMemberRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		utils.BadRequest(c, err)
+	// 检查用户是否有权限移除此课程的成员（管理员可以移除所有课程的成员，教师只能移除自己课程的成员）
+	if userRole != utils.ClassRoleAdmin {
+		hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{utils.RoleTeacher})
+		if err != nil {
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+			return
+		}
+		if !hasPermission {
+			utils.Forbidden(c, utils.ErrNoPermission)
+			return
+		}
+	}
+
+	// 额外检查：教师只能移除学生和助教，不能移除其他教师或管理员
+	if userRole == utils.RoleTeacher && (role == utils.ClassRoleAdmin || role == utils.RoleTeacher) {
+		utils.Forbidden(c, errors.New("教师只能移除学生和助教"))
 		return
 	}
 
 	// 调用service层移除课程成员
-	err = s.svc.RemoveCourseMember(c, courseID, req.UserID, req.Role)
+	err := s.svc.RemoveCourseMember(c, courseID, memberID, role)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
@@ -342,28 +400,38 @@ func (s *Server) getCourseMembers(c *gin.Context) {
 	// 获取课程ID
 	courseID := c.Param("id")
 
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
 
-	// 检查权限（所有课程成员都可以查看成员列表）
-	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1, 2, 3, 4})
-	if err != nil {
-		utils.FailedResponse(c, http.StatusInternalServerError, err)
+	// 使用Casbin检查权限
+	role := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(role, utils.ObjCourseMember, utils.ActRead) {
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
-	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
-		return
+
+	// 检查用户是否有权限查看此课程的成员（管理员可以查看所有课程的成员，其他角色只能查看自己参与的课程的成员）
+	if userRole != utils.ClassRoleAdmin {
+		hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{utils.RoleTeacher, utils.RoleAssistant})
+		if err != nil {
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+			return
+		}
+		if !hasPermission {
+			utils.Forbidden(c, utils.ErrNoPermission)
+			return
+		}
 	}
 
 	// 调用service层获取课程成员
-	members, err := s.svc.GetCourseMembers(c, courseID)
+	resp, err := s.svc.GetCourseMembers(c, courseID)
 	if err != nil {
 		utils.FailedResponse(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	utils.SuccessResponse(c, members)
+	utils.SuccessResponse(c, resp)
 }
 
 // createJoinCourseRequest 创建加入课程申请
@@ -390,14 +458,46 @@ func (s *Server) reviewJoinCourseRequest(c *gin.Context) {
 	// 获取申请ID
 	requestID := c.Param("id")
 
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
+
+	// 使用Casbin检查权限
+	role := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(role, utils.ObjCourseRequest, utils.ActReview) {
+		utils.Forbidden(c, utils.ErrNoPermission)
+		return
+	}
 
 	// 解析请求参数
 	var req dto.ReviewJoinCourseRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		utils.BadRequest(c, err)
 		return
+	}
+
+	// 获取加入请求信息，以便检查关联的课程
+	joinRequest, err := s.svc.GetJoinCourseRequestByID(c, requestID)
+	if err != nil {
+		utils.FailedResponse(c, http.StatusInternalServerError, err)
+		return
+	}
+	if joinRequest == nil {
+		utils.BadRequest(c, errors.New("加入请求不存在"))
+		return
+	}
+
+	// 检查用户是否有权限审核此课程的申请（管理员可以审核所有课程的申请，教师只能审核自己课程的申请）
+	if userRole != utils.ClassRoleAdmin {
+		hasPermission, err := s.svc.CheckUserCoursePermission(c, joinRequest.CourseID, userID, []int{utils.RoleTeacher})
+		if err != nil {
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+			return
+		}
+		if !hasPermission {
+			utils.Forbidden(c, utils.ErrNoPermission)
+			return
+		}
 	}
 
 	// 调用service层审核加入课程申请
@@ -415,18 +515,28 @@ func (s *Server) getJoinCourseRequestList(c *gin.Context) {
 	// 获取课程ID
 	courseID := c.Param("id")
 
-	// 获取当前用户ID
+	// 获取当前用户ID和角色
 	userID := c.GetString("userId")
+	userRole, _ := strconv.Atoi(c.GetString("userRole"))
 
-	// 检查权限（只有管理员和教师可以查看申请列表）
-	hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{1, 2})
-	if err != nil {
-		utils.FailedResponse(c, http.StatusInternalServerError, err)
+	// 使用Casbin检查权限
+	role := utils.GetRoleName(userRole)
+	if !utils.CheckPermission(role, utils.ObjCourseRequest, utils.ActRead) {
+		utils.Forbidden(c, utils.ErrNoPermission)
 		return
 	}
-	if !hasPermission {
-		utils.FailedResponse(c, http.StatusForbidden, utils.ErrNoPermission)
-		return
+
+	// 检查用户是否有权限查看此课程的申请列表（管理员可以查看所有课程的申请，教师只能查看自己课程的申请）
+	if userRole != utils.ClassRoleAdmin {
+		hasPermission, err := s.svc.CheckUserCoursePermission(c, courseID, userID, []int{utils.RoleTeacher})
+		if err != nil {
+			utils.FailedResponse(c, http.StatusInternalServerError, err)
+			return
+		}
+		if !hasPermission {
+			utils.Forbidden(c, utils.ErrNoPermission)
+			return
+		}
 	}
 
 	// 获取分页参数
