@@ -54,6 +54,25 @@ func (s *Server) PostUser(c *gin.Context) {
 	utils.SuccessResponse(c, gin.H{"id": id})
 }
 
+func (s *Server) GetInfor(c *gin.Context) {
+	lg := utils.GetDefaultLogger()
+	//把参数解析到结构体user
+	var reqUser *dto.ReqUser
+	if err := c.BindJSON(&reqUser); err != nil {
+		return
+	}
+	lg.Println("条件查询用户......")
+	//调用service_user层
+	res, err := s.svc.GetOneUser(reqUser)
+	//返回结果
+	if err != nil {
+		lg.Errorf("getOneUser: %v", err)
+		utils.BadRequest(c, err)
+		return
+	}
+	utils.SuccessResponse(c, res)
+}
+
 // Login 登录 /login
 func (s *Server) Login(c *gin.Context) {
 	//打印日志
@@ -89,7 +108,7 @@ func (s *Server) GetOneUser(c *gin.Context) {
 	res, err := s.svc.GetOneUser(reqUser)
 	//返回结果
 	if err != nil {
-		lg.Errorf("getUserList: %v", err)
+		lg.Errorf("getOneUser: %v", err)
 		utils.BadRequest(c, err)
 		return
 	}

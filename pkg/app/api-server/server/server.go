@@ -32,8 +32,9 @@ type Server struct {
 func (s *Server) RegisterUser(g *gin.RouterGroup) {
 	userGroup := g.Group("/user")
 	{
-		userGroup.POST("/", s.PostUser)   // 注册
-		userGroup.POST("/login", s.Login) // 登录
+		userGroup.POST("/", s.PostUser)     // 注册
+		userGroup.POST("/login", s.Login)   // 登录
+		userGroup.GET("/infor", s.GetInfor) //获取个人信息
 	}
 
 	// 对以下路由应用JWT拦截器，并且只有管理员可以执行以下操作
