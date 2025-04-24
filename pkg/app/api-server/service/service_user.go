@@ -104,6 +104,23 @@ func (s *Service) DeleteUser(id string, operatorRole int32) (_ string, err error
 }
 
 // GetOneUser 构造query条件查用户
+func (s *Service) GetInfor(userId primitive.ObjectID) (user *models.User, err error) {
+	lg := utils.GetDefaultLogger()
+	//构造bson
+	query := bson.M{
+		"_id": userId,
+	}
+	lg.Infof("查询条件: %s", query)
+	//调用Dao查询user
+	daoUser, err := s.dao.GetOneUser(context.Background(), query)
+	if daoUser == nil {
+		lg.Info(utils.UserNotExistErr, err)
+		return nil, errors.New(utils.UserNotExistErr)
+	}
+	return daoUser, nil
+}
+
+// GetOneUser 构造query条件查用户
 func (s *Service) GetOneUser(reqUser *dto.ReqUser) (user *models.User, err error) {
 	lg := utils.GetDefaultLogger()
 	//构造bson

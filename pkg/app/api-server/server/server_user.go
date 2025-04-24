@@ -54,16 +54,33 @@ func (s *Server) PostUser(c *gin.Context) {
 	utils.SuccessResponse(c, gin.H{"id": id})
 }
 
+// TODO 个人信息管理已解决？ 这个方法可以解析jwt，直接查询到个人信息
 func (s *Server) GetInfor(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
-	//把参数解析到结构体user
-	var reqUser *dto.ReqUser
-	if err := c.BindJSON(&reqUser); err != nil {
+	// 从请求头中获取token
+	token := c.Request.Header.Get("Authorization") //TODO 这个key好像是前端设置的，每次请求都自动携带
+
+	lg.Infoln("token:", token)
+
+	// 检查token是否存在
+	if token == "" {
+		lg.Info(utils.JwtEmptyErr)
+		utils.BadRequest(c, utils.New(utils.JwtEmptyErr))
+		c.Abort()
 		return
 	}
-	lg.Println("条件查询用户......")
+
+	//校验jwt是否有效
+	jwtClaims, err := utils.ParseToken(token, utils.JwtTokenSecretKey)
+	if err != nil {
+		lg.Info(utils.JwtFailErr, err)
+		utils.BadRequest(c, utils.New(utils.JwtFailErr))
+		c.Abort()
+		return
+	}
+
 	//调用service_user层
-	res, err := s.svc.GetOneUser(reqUser)
+	res, err := s.svc.GetInfor(jwtClaims.ID)
 	//返回结果
 	if err != nil {
 		lg.Errorf("getOneUser: %v", err)
