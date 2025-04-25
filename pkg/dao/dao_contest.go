@@ -43,7 +43,7 @@ func (d *Dao) GetContestByID(ctx context.Context, id string) (*models.Contest, e
 	err = d.mongo.FindOne(ctx, contestTable, bson.M{"_id": objectID, "status": bson.M{"$ne": 0}}, &contest)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, mongo.ErrNoDocuments
+			return nil, errors.New(utils.FindContestErr)
 		}
 		return nil, err
 	}

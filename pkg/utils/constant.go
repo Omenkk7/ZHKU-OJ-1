@@ -81,6 +81,9 @@ const (
 	CourseJoinStatusApproved = 1 // 已通过
 	CourseJoinStatusRejected = 2 // 已拒绝
 
+	//竞赛相关
+	FindContestErr = "查询失败，没有这个竞赛！"
+
 	AssignmentTable = "assignments" // 作业表
 
 )
