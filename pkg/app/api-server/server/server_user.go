@@ -115,11 +115,12 @@ func (s *Server) Login(c *gin.Context) {
 // GetOneUser 构造query条件查用户 /:id
 func (s *Server) GetOneUser(c *gin.Context) {
 	lg := utils.GetDefaultLogger()
+	id := c.Param("id")
+	lg.Infof("id: %s", id)
 	//把参数解析到结构体user
 	var reqUser *dto.ReqUser
-	if err := c.BindJSON(&reqUser); err != nil {
-		return
-	}
+	reqUser = &dto.ReqUser{}
+	reqUser.ID = id
 	lg.Println("条件查询用户......")
 	//调用service_user层
 	res, err := s.svc.GetOneUser(reqUser)
