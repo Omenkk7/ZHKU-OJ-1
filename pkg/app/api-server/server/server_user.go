@@ -118,9 +118,7 @@ func (s *Server) GetOneUser(c *gin.Context) {
 	id := c.Param("id")
 	lg.Infof("id: %s", id)
 	//把参数解析到结构体user
-	var reqUser *dto.ReqUser
-	reqUser = &dto.ReqUser{}
-	reqUser.ID = id
+	reqUser := &dto.ReqUser{ID: id}
 	lg.Println("条件查询用户......")
 	//调用service_user层
 	res, err := s.svc.GetOneUser(reqUser)

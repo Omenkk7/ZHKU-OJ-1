@@ -123,12 +123,12 @@ func (s *Service) GetInfor(userId primitive.ObjectID) (user *models.User, err er
 // GetOneUser 构造query条件查用户
 func (s *Service) GetOneUser(reqUser *dto.ReqUser) (user *models.User, err error) {
 	lg := utils.GetDefaultLogger()
+	objectId, _ := primitive.ObjectIDFromHex(reqUser.ID)
 	//构造bson
-	query, err := bson.Marshal(reqUser)
-	if err != nil {
-		lg.Info(utils.ConstructingBsonErr, err)
-		return nil, errors.New(utils.ConstructingBsonErr)
+	query := bson.M{
+		"_id": objectId,
 	}
+
 	lg.Infof("查询条件: %s", query)
 	//调用Dao查询user
 	daoUser, err := s.dao.GetOneUser(context.Background(), query)
