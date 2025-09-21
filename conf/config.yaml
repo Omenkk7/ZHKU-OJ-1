@@ -25,8 +25,7 @@ Sandbox:
 Dify:
   APIKey: "app-N1VW5k8Tuxxb0CyWSUV4oCxN"
   APIURL: "http://localhost/v1"
-aliyun:
-  APIKey:
+
 
 TemplateUrl: "C:\\Users\\43162\\Desktop\\template"
 TestExampleUrl: "C:\\Users\\43162\\Desktop\\test_example"

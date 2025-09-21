@@ -9,10 +9,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/spf13/cobra"
 	"log"
 	"os"
 	"zhku-oj-server/pkg/utils"
+
+	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
@@ -22,8 +23,14 @@ var rootCmd = &cobra.Command{
 }
 
 func main() {
+	// 获取配置目录路径，支持从cmd目录或项目根目录运行
+	configDir := "conf"
+	if _, err := os.Stat(configDir); os.IsNotExist(err) {
+		// 如果当前目录没有conf，尝试上级目录
+		configDir = "../conf"
+	}
 
-	enforcer, err := utils.InitCasbin("conf")
+	enforcer, err := utils.InitCasbin(configDir)
 	if err != nil {
 		log.Fatalf("初始化Casbin失败: %v", err)
 	}

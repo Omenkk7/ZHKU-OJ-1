@@ -1,6 +1,8 @@
 package server
 
 import (
+	"log"
+	"os"
 	"zhku-oj-server/pkg/app/api-server/service"
 	"zhku-oj-server/pkg/utils"
 )
@@ -31,7 +33,21 @@ func (j Judge) Work() {
 
 func NewJudge() *Judge {
 	//通过读取配置文件，决定启动哪个判题
-	cfg, _ := utils.LoadConfig("conf/config.yaml")
+	configPath := "conf/config.yaml"
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		// 如果当前目录没有conf，尝试上级目录
+		configPath = "../conf/config.yaml"
+	}
+
+	cfg, err := utils.LoadConfig(configPath)
+	if err != nil {
+		log.Printf("加载配置文件失败: %v", err)
+		// 返回默认配置的Judge
+		return &Judge{
+			choice: utils.LocalJudge,
+			svc:    service.NewService(),
+		}
+	}
 	judgeCfg := cfg.GetJudgeConfig()
 
 	switch judgeCfg.Type {
