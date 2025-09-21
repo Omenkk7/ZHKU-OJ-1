@@ -17,6 +17,7 @@ import (
 	"zhku-oj-server/pkg/utils"
 )
 
+//提供Dao结构体，封装MongoDB,Redis等数据库操作
 type Dao struct {
 	mongo *utils.MongoDB
 }

@@ -10,8 +10,9 @@ package utils
 import (
 	"context"
 	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -26,6 +27,7 @@ type MongoDB struct {
 	cancel  context.CancelFunc
 }
 
+// 获取一个MongoDB实例，类似于一个连接池的
 func NewMongoDB(uri, database string, timeoutOpt ...time.Duration) *MongoDB {
 	client, cancel := initDB(uri)
 

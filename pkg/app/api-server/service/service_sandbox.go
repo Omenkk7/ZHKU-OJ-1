@@ -4,10 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"golang.org/x/net/context"
 	"math"
 	"os"
 	"strconv"
@@ -15,6 +11,11 @@ import (
 	"zhku-oj-server/pkg/dao"
 	"zhku-oj-server/pkg/models"
 	"zhku-oj-server/pkg/utils"
+
+	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/net/context"
 
 	"io/ioutil"
 	"net/http"
@@ -31,7 +32,6 @@ type Cmd struct {
 	CopyOut       []string        `json:"copyOut,omitempty"`
 	CopyOutCached []string        `json:"copyOutCached,omitempty"`
 }
-
 type File struct {
 	Content string `json:"content,omitempty"`
 	Name    string `json:"name,omitempty"`

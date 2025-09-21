@@ -1,8 +1,9 @@
 App:
   Host: "0.0.0.0"
   Port: "8080"
+
 Mongo:
-  Uri: mongodb://localhost:27017
+  Uri: mongodb://42.194.245.236:27017
   DbName: zkoj
 Judge:
   Type: LocalJudge
@@ -24,6 +25,8 @@ Sandbox:
 Dify:
   APIKey: "app-N1VW5k8Tuxxb0CyWSUV4oCxN"
   APIURL: "http://localhost/v1"
+aliyun:
+  APIKey:
 
 TemplateUrl: "C:\\Users\\43162\\Desktop\\template"
 TestExampleUrl: "C:\\Users\\43162\\Desktop\\test_example"
