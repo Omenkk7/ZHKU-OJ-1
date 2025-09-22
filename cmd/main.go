@@ -22,6 +22,8 @@ var rootCmd = &cobra.Command{
 	Long:  "bio-dragon",
 }
 
+
+
 func main() {
 	// 获取配置目录路径，支持从cmd目录或项目根目录运行
 	configDir := "conf"
@@ -46,9 +48,21 @@ func main() {
 		log.Fatalf("Casbin enforcer 初始化失败")
 	}
 
+	// 初始化AI服务
+	_, err = utils.InitAI(configDir)
+	if err != nil {
+		log.Printf("AI服务初始化失败: %v", err)
+		log.Println("系统将在没有AI功能的情况下继续运行")
+	} else {
+		log.Println("AI服务初始化成功")
+		utils.LogAIStatus() // 打印AI服务状态
+	}
+
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 
 }
+
+

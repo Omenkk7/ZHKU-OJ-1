@@ -16,30 +16,28 @@ type AIClient interface {
 	// GetModels 获取可用模型列表
 	GetModels(ctx context.Context) ([]Model, error)
 
-	// GetUsage 获取使用情况
-	GetUsage(ctx context.Context) (*Usage, error)
-
 	// Close 关闭客户端
 	Close() error
 }
 
 // ChatRequest 聊天请求
 type ChatRequest struct {
-	Messages    []Message     `json:"messages"`              // 消息列表
-	Model       string        `json:"model,omitempty"`       // 模型名称
-	Temperature float64       `json:"temperature,omitempty"` // 温度参数 0-1
-	MaxTokens   int           `json:"max_tokens,omitempty"`  // 最大token数
-	TopP        float64       `json:"top_p,omitempty"`       // Top-p采样
-	Stream      bool          `json:"stream,omitempty"`      // 是否流式返回
-	Stop        []string      `json:"stop,omitempty"`        // 停止词
-	Timeout     time.Duration `json:"-"`                     // 请求超时时间
+	Messages       []Message        `json:"messages"`                // 消息列表
+	Model          string           `json:"model,omitempty"`         // 模型名称
+	Temperature    float64          `json:"temperature,omitempty"`   // 温度参数 0-1
+	MaxTokens      int              `json:"max_tokens,omitempty"`    // 最大token数
+	TopP           float64          `json:"top_p,omitempty"`         // Top-p采样
+	Stream         bool             `json:"stream,omitempty"`        // 是否流式返回
+	Stop           []string         `json:"stop,omitempty"`          // 停止词
+	ResponseFormat *ResponseFormat  `json:"response_format,omitempty"` // 响应格式
+	Timeout        time.Duration    `json:"-"`                       // 请求超时时间
 }
 
 // ChatResponse 聊天响应
 type ChatResponse struct {
 	ID      string    `json:"id"`      // 响应ID
 	Content string    `json:"content"` // 响应内容
-	Model   string    `json:"model"`   // 使用的模型
+	Model   string    `json:"model"`   // 使用模型
 	Usage   Usage     `json:"usage"`   // 使用情况
 	Created time.Time `json:"created"` // 创建时间
 }
@@ -87,6 +85,11 @@ type Usage struct {
 	PromptTokens     int `json:"prompt_tokens"`     // 提示词token数
 	CompletionTokens int `json:"completion_tokens"` // 完成token数
 	TotalTokens      int `json:"total_tokens"`      // 总token数
+}
+
+// ResponseFormat 响应格式
+type ResponseFormat struct {
+	Type string `json:"type"` // "text" 或 "json_object"
 }
 
 // ClientConfig 客户端配置

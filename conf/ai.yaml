@@ -1,0 +1,101 @@
+# AI配置文件
+# 支持多个AI提供商和场景化配置
+
+# 默认使用的AI提供商
+default_provider: "dashscope"
+
+# AI提供商配置
+providers:
+  # 阿里云百炼大模型平台
+  dashscope:
+    provider: "dashscope"
+    base_url: "https://dashscope.aliyuncs.com"
+    model: "qwen-plus"
+    timeout: 30s
+    max_retries: 3
+    enabled: true
+    headers:
+      User-Agent: "ZHKU-OJ-Server/1.0"
+
+  # # OpenAI GPT (暂时禁用)
+  # openai:
+  #   provider: "openai"
+  #   # api_key 将从环境变量 OPENAI_API_KEY 中读取
+  #   base_url: "https://api.openai.com"
+  #   model: "gpt-3.5-turbo"
+  #   timeout: 30s
+  #   max_retries: 3
+  #   enabled: false
+  #   # proxy: "http://proxy.example.com:8080"  # 如需代理请取消注释
+
+  # # 智谱AI GLM (暂时禁用)
+  # glm:
+  #   provider: "glm"
+  #   api_key: "${GLM_API_KEY}"
+  #   base_url: "https://open.bigmodel.cn"
+  #   model: "glm-4"
+  #   timeout: 45s
+  #   max_retries: 2
+  #   enabled: false
+
+  # # 讯飞星火 (暂时禁用)
+  # spark:
+  #   provider: "spark"
+  #   api_key: "${SPARK_API_KEY}"
+  #   base_url: "https://spark-api.xf-yun.com"
+  #   model: "generalv3.5"
+  #   timeout: 30s
+  #   max_retries: 3
+  #   enabled: false
+
+# 场景化配置 - 不同业务场景使用不同的AI配置
+scenarios:
+  # 测试用例生成场景
+  testcase_generation:
+    primary_provider: "dashscope"
+    fallback_providers: []  # 暂时不使用备用提供商
+    config:
+      temperature: 0.7      # 创造性参数，0-1，越高越有创造性
+      max_tokens: 4000      # 最大生成token数
+      top_p: 0.9           # 核采样参数
+      format: "json"        # 输出格式：json 或 text
+
+  # 代码审查场景
+  code_review:
+    primary_provider: "dashscope"
+    fallback_providers: []
+    config:
+      temperature: 0.3      # 较低的创造性，更注重准确性
+      max_tokens: 2000
+      top_p: 0.8
+      format: "text"
+
+  # 题目生成场景
+  problem_generation:
+    primary_provider: "dashscope"
+    fallback_providers: []
+    config:
+      temperature: 0.8      # 较高的创造性
+      max_tokens: 3000
+      top_p: 0.9
+      format: "json"
+
+  # AI聊天助手场景
+  chat_assistant:
+    primary_provider: "dashscope"
+    fallback_providers: []
+    config:
+      temperature: 0.6
+      max_tokens: 1500
+      top_p: 0.9
+      format: "text"
+
+# 全局配置
+global:
+  enable_cache: true          # 是否启用缓存
+  cache_ttl: 10m             # 缓存过期时间
+  enable_metrics: true        # 是否启用指标收集
+  enable_retry: true          # 是否启用重试机制
+  default_timeout: 30s        # 默认超时时间
+  max_concurrency: 10         # 最大并发数
+  rate_limit_rps: 100         # 每秒请求限制

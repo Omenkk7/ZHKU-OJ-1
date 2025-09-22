@@ -10,16 +10,16 @@ import (
 	"time"
 )
 
-// BailianClient 阿里云千炼客户端实现
-type BailianClient struct {
+// DashScopeClient 阿里云百炼DashScope客户端实现
+type DashScopeClient struct {
 	config     *ClientConfig
 	httpClient *http.Client
 	baseURL    string
 	apiKey     string
 }
 
-// NewBailianClient 创建千炼客户端
-func NewBailianClient(config *ClientConfig) (*BailianClient, error) {
+// NewDashScopeClient 创建百炼DashScope客户端
+func NewDashScopeClient(config *ClientConfig) (*DashScopeClient, error) {
 	if config.APIKey == "" {
 		return nil, &Error{
 			Code:    "missing_api_key",
@@ -28,7 +28,7 @@ func NewBailianClient(config *ClientConfig) (*BailianClient, error) {
 		}
 	}
 
-	client := &BailianClient{
+	client := &DashScopeClient{
 		config:  config,
 		baseURL: config.BaseURL,
 		apiKey:  config.APIKey,
@@ -41,43 +41,58 @@ func NewBailianClient(config *ClientConfig) (*BailianClient, error) {
 }
 
 // Chat 实现聊天接口
-func (c *BailianClient) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, error) {
-	// 构建千炼API请求格式
-	qianfanReq := map[string]interface{}{
-		"messages":    req.Messages,
-		"temperature": req.Temperature,
-		"max_tokens":  req.MaxTokens,
-		"stream":      req.Stream,
+func (c *DashScopeClient) Chat(ctx context.Context, req *ChatRequest) (*ChatResponse, error) {
+	// 设置默认值
+	temperature := req.Temperature
+	if temperature == 0 {
+		temperature = 0.7 // 默认温度
 	}
 
-	if req.Model != "" {
-		qianfanReq["model"] = req.Model
+	maxTokens := req.MaxTokens
+	if maxTokens == 0 {
+		maxTokens = 1000 // 默认最大token数
+	}
+
+	topP := req.TopP
+	if topP == 0 {
+		topP = 0.9 // 默认top_p值
+	}
+
+	// 构建DashScope API请求格式
+	dashscopeReq := map[string]interface{}{
+		"model": req.Model,
+		"input": map[string]interface{}{
+			"messages": req.Messages,
+		},
+		"parameters": map[string]interface{}{
+			"temperature": temperature,
+			"max_tokens":  maxTokens,
+			"top_p":       topP,
+			"stream":      req.Stream,
+		},
 	}
 
 	// 发送请求
-	respData, err := c.sendRequest(ctx, "/chat/completions", qianfanReq)
+	respData, err := c.sendRequest(ctx, "/api/v1/services/aigc/text-generation/generation", dashscopeReq)
 	if err != nil {
 		return nil, err
 	}
 
 	// 解析响应
-	var qianfanResp struct {
-		ID      string `json:"id"`
-		Choices []struct {
-			Message struct {
-				Content string `json:"content"`
-			} `json:"message"`
-		} `json:"choices"`
+	var dashscopeResp struct {
+		RequestID string `json:"request_id"`
+		Output    struct {
+			Text         string `json:"text"`
+			FinishReason string `json:"finish_reason"`
+		} `json:"output"`
 		Usage struct {
-			PromptTokens     int `json:"prompt_tokens"`
-			CompletionTokens int `json:"completion_tokens"`
-			TotalTokens      int `json:"total_tokens"`
+			InputTokens  int `json:"input_tokens"`
+			OutputTokens int `json:"output_tokens"`
+			TotalTokens  int `json:"total_tokens"`
 		} `json:"usage"`
-		Created int64  `json:"created"`
-		Model   string `json:"model"`
 	}
 
-	if err := json.Unmarshal(respData, &qianfanResp); err != nil {
+	if err := json.Unmarshal(respData, &dashscopeResp); err != nil {
 		return nil, &Error{
 			Code:    "parse_error",
 			Message: fmt.Sprintf("解析响应失败: %v", err),
@@ -85,7 +100,7 @@ func (c *BailianClient) Chat(ctx context.Context, req *ChatRequest) (*ChatRespon
 		}
 	}
 
-	if len(qianfanResp.Choices) == 0 {
+	if dashscopeResp.Output.Text == "" {
 		return nil, &Error{
 			Code:    "empty_response",
 			Message: "AI返回空响应",
@@ -94,28 +109,45 @@ func (c *BailianClient) Chat(ctx context.Context, req *ChatRequest) (*ChatRespon
 	}
 
 	return &ChatResponse{
-		ID:      qianfanResp.ID,
-		Content: qianfanResp.Choices[0].Message.Content,
-		Model:   qianfanResp.Model,
+		ID:      dashscopeResp.RequestID,
+		Content: dashscopeResp.Output.Text,
+		Model:   req.Model,
 		Usage: Usage{
-			PromptTokens:     qianfanResp.Usage.PromptTokens,
-			CompletionTokens: qianfanResp.Usage.CompletionTokens,
-			TotalTokens:      qianfanResp.Usage.TotalTokens,
+			PromptTokens:     dashscopeResp.Usage.InputTokens,
+			CompletionTokens: dashscopeResp.Usage.OutputTokens,
+			TotalTokens:      dashscopeResp.Usage.TotalTokens,
 		},
-		Created: time.Unix(qianfanResp.Created, 0),
+		Created: time.Now(),
 	}, nil
 }
 
-// Generate 实现生成接口
-func (c *BailianClient) Generate(ctx context.Context, req *GenerateRequest) (*GenerateResponse, error) {
+// Generate 单次对话接口
+func (c *DashScopeClient) Generate(ctx context.Context, req *GenerateRequest) (*GenerateResponse, error) {
+	// 设置默认值（与Chat方法保持一致）
+	temperature := req.Temperature
+	if temperature == 0 {
+		temperature = 0.7 // 默认温度
+	}
+
+	maxTokens := req.MaxTokens
+	if maxTokens == 0 {
+		maxTokens = 1000 // 默认最大token数
+	}
+
+	topP := req.TopP
+	if topP == 0 {
+		topP = 0.9 // 默认top_p值
+	}
+
 	// 转换为Chat格式
 	chatReq := &ChatRequest{
 		Messages: []Message{
 			{Role: "user", Content: req.Prompt},
 		},
 		Model:       req.Model,
-		Temperature: req.Temperature,
-		MaxTokens:   req.MaxTokens,
+		Temperature: temperature,
+		MaxTokens:   maxTokens,
+		TopP:        topP,
 		Timeout:     req.Timeout,
 	}
 
@@ -144,21 +176,28 @@ func (c *BailianClient) Generate(ctx context.Context, req *GenerateRequest) (*Ge
 }
 
 // GetModels 获取可用模型列表
-func (c *BailianClient) GetModels(ctx context.Context) ([]Model, error) {
-	// 千炼支持的模型列表（示例）
+func (c *DashScopeClient) GetModels(ctx context.Context) ([]Model, error) {
+	// DashScope支持的模型列表
 	models := []Model{
 		{
-			ID:           "ERNIE-Bot-turbo",
-			Name:         "文心一言Turbo",
-			Description:  "百度文心一言Turbo版本",
-			MaxTokens:    4096,
+			ID:           "qwen-turbo",
+			Name:         "通义千问Turbo",
+			Description:  "阿里云通义千问Turbo版本",
+			MaxTokens:    6000,
 			Capabilities: []string{"chat", "generate", "json"},
 		},
 		{
-			ID:           "ERNIE-Bot",
-			Name:         "文心一言",
-			Description:  "百度文心一言标准版本",
-			MaxTokens:    8192,
+			ID:           "qwen-plus",
+			Name:         "通义千问Plus",
+			Description:  "阿里云通义千问Plus版本",
+			MaxTokens:    30000,
+			Capabilities: []string{"chat", "generate", "json"},
+		},
+		{
+			ID:           "qwen-max",
+			Name:         "通义千问Max",
+			Description:  "阿里云通义千问Max版本",
+			MaxTokens:    6000,
 			Capabilities: []string{"chat", "generate", "json"},
 		},
 	}
@@ -167,13 +206,13 @@ func (c *BailianClient) GetModels(ctx context.Context) ([]Model, error) {
 }
 
 // Close 关闭客户端
-func (c *BailianClient) Close() error {
-	// 千炼客户端无需特殊关闭操作
+func (c *DashScopeClient) Close() error {
+	// DashScope客户端无需特殊关闭操作
 	return nil
 }
 
 // sendRequest 发送HTTP请求的通用方法
-func (c *BailianClient) sendRequest(ctx context.Context, endpoint string, data interface{}) ([]byte, error) {
+func (c *DashScopeClient) sendRequest(ctx context.Context, endpoint string, data interface{}) ([]byte, error) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
 		return nil, &Error{
@@ -196,6 +235,7 @@ func (c *BailianClient) sendRequest(ctx context.Context, endpoint string, data i
 	// 设置请求头
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	req.Header.Set("X-DashScope-SSE", "disable") // 禁用SSE流式输出
 
 	// 添加自定义请求头
 	for key, value := range c.config.Headers {
